@@ -1,0 +1,10 @@
+import os
+import google.generativeai as genai
+
+# Asegúrate de que la variable de entorno esté cargada
+os.environ["GOOGLE_API_KEY"] = "TU_API_KEY_AQUI" 
+genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+
+for m in genai.list_models():
+    if 'generateContent' in m.supported_generation_methods:
+        print(f"Modelo disponible: {m.name}")

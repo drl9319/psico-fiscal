@@ -13,6 +13,9 @@ pnpm dev
 # or
 bun dev
 ```
+RUN UNICORN server in test mode, from folder psico-fiscal\backend run: python -m uvicorn app.main:app --port 8000 --log-level info --reload
+
+RUN Next.js server test: npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 

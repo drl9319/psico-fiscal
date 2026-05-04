@@ -6,6 +6,7 @@ import { FileSpreadsheet, FileText, UploadCloud } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 type UploadZoneIcon = "pdf" | "excel"
 
@@ -25,13 +26,66 @@ export function UploadZone({
   const inputRef = React.useRef<HTMLInputElement | null>(null)
   const [isDragging, setIsDragging] = React.useState(false)
   const [files, setFiles] = React.useState<File[]>([])
+  const [isExtracting, setIsExtracting] = React.useState(false)
+  const [extractError, setExtractError] = React.useState<string | null>(null)
+  const [invoiceJson, setInvoiceJson] = React.useState<Record<string, unknown> | null>(
+    null
+  )
 
   const acceptAttr = acceptedTypes.join(",")
   const Icon = icon === "pdf" ? FileText : FileSpreadsheet
+  const isPdfMode = icon === "pdf"
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
 
   const onFiles = React.useCallback((next: FileList | null) => {
     if (!next || next.length === 0) return
     setFiles((prev) => [...prev, ...Array.from(next)])
+  }, [])
+
+  const extractFromLatestPdf = React.useCallback(async () => {
+    setExtractError(null)
+    setInvoiceJson(null)
+
+    const latest = [...files].reverse().find((f) => f.type === "application/pdf")
+    if (!latest) {
+      setExtractError("No hay ningún PDF seleccionado.")
+      return
+    }
+
+    setIsExtracting(true)
+    try {
+      const form = new FormData()
+      form.append("file", latest, latest.name)
+
+      const res = await fetch(`${apiBaseUrl}/extract-invoice`, {
+        method: "POST",
+        body: form,
+      })
+
+      const data = (await res.json()) as unknown
+      if (!res.ok) {
+        const detail =
+          typeof data === "object" && data && "detail" in data
+            ? String((data as { detail?: unknown }).detail)
+            : "Error desconocido extrayendo la factura."
+        throw new Error(detail)
+      }
+
+      if (!data || typeof data !== "object") {
+        throw new Error("La API devolvió un JSON inválido.")
+      }
+
+      setInvoiceJson(data as Record<string, unknown>)
+    } catch (e) {
+      setExtractError(e instanceof Error ? e.message : "Error desconocido.")
+    } finally {
+      setIsExtracting(false)
+    }
+  }, [apiBaseUrl, files])
+
+  const clearResults = React.useCallback(() => {
+    setExtractError(null)
+    setInvoiceJson(null)
   }, [])
 
   return (
@@ -81,7 +135,7 @@ export function UploadZone({
               <UploadCloud className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-medium">Arrastra y suelta aquí</p>
+              <p className="text-sm font-medium">Arrastra y suelta aquí prueba</p>
               <p className="text-xs text-muted-foreground">
                 Tipos: {acceptedTypes.join(" · ")}
               </p>
@@ -103,6 +157,14 @@ export function UploadZone({
             >
               Seleccionar archivo
             </Button>
+            {isPdfMode && (
+              <Button
+                onClick={extractFromLatestPdf}
+                disabled={files.length === 0 || isExtracting}
+              >
+                {isExtracting ? "Extrayendo..." : "Extraer datos"}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -124,6 +186,95 @@ export function UploadZone({
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {isPdfMode && (extractError || invoiceJson) && (
+          <div className="rounded-lg border bg-card">
+            <div className="flex items-center justify-between gap-3 border-b px-4 py-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Resultado extracción
+                </span>
+                {extractError ? (
+                  <Badge variant="destructive">Error</Badge>
+                ) : (
+                  <Badge variant="secondary">OK</Badge>
+                )}
+              </div>
+              <Button variant="ghost" size="sm" onClick={clearResults}>
+                Limpiar
+              </Button>
+            </div>
+
+            <div className="space-y-4 px-4 py-4">
+              {extractError && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  {extractError}
+                </div>
+              )}
+
+              {invoiceJson && (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-md border bg-background px-3 py-2">
+                      <div className="text-xs text-muted-foreground">Proveedor</div>
+                      <div className="text-sm font-medium">
+                        {String(invoiceJson.proveedor ?? "")}
+                      </div>
+                    </div>
+                    <div className="rounded-md border bg-background px-3 py-2">
+                      <div className="text-xs text-muted-foreground">Fecha</div>
+                      <div className="text-sm font-medium">
+                        {String(invoiceJson.fecha_contabilizacion ?? "")}
+                      </div>
+                    </div>
+                    <div className="rounded-md border bg-background px-3 py-2">
+                      <div className="text-xs text-muted-foreground">DNI</div>
+                      <div className="text-sm font-medium">
+                        {String(invoiceJson.dni ?? "")}
+                      </div>
+                    </div>
+                    <div className="rounded-md border bg-background px-3 py-2">
+                      <div className="text-xs text-muted-foreground">Dirección</div>
+                      <div className="text-sm font-medium">
+                        {String(invoiceJson.direccion ?? "")}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-md border bg-background px-3 py-2">
+                      <div className="text-xs text-muted-foreground">Base</div>
+                      <div className="text-lg font-semibold tabular-nums">
+                        {Number(invoiceJson.base ?? 0).toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="rounded-md border bg-background px-3 py-2">
+                      <div className="text-xs text-muted-foreground">Impuesto</div>
+                      <div className="text-lg font-semibold tabular-nums">
+                        {Number(invoiceJson.impuesto ?? 0).toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="rounded-md border bg-background px-3 py-2">
+                      <div className="text-xs text-muted-foreground">Total</div>
+                      <div className="text-lg font-semibold tabular-nums">
+                        {Number(invoiceJson.total ?? 0).toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border bg-background">
+                    <div className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">
+                      JSON completo
+                    </div>
+                    <pre className="max-h-64 overflow-auto px-3 py-3 text-xs leading-relaxed">
+                      {JSON.stringify(invoiceJson, null, 2)}
+                    </pre>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
       </CardContent>
