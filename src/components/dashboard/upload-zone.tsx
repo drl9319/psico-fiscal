@@ -31,6 +31,9 @@ export function UploadZone({
   const [invoiceJson, setInvoiceJson] = React.useState<Record<string, unknown> | null>(
     null
   )
+  const [isSaving, setIsSaving] = React.useState(false)
+  const [saveError, setSaveError] = React.useState<string | null>(null)
+  const [saveSuccess, setSaveSuccess] = React.useState<boolean>(false)
 
   const acceptAttr = acceptedTypes.join(",")
   const Icon = icon === "pdf" ? FileText : FileSpreadsheet
@@ -83,9 +86,43 @@ export function UploadZone({
     }
   }, [apiBaseUrl, files])
 
+  const saveInvoice = React.useCallback(async () => {
+    if (!invoiceJson) return
+
+    setSaveError(null)
+    setSaveSuccess(false)
+    setIsSaving(true)
+
+    try {
+      const res = await fetch(`${apiBaseUrl}/save-invoice`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(invoiceJson),
+      })
+
+      const data = (await res.json()) as unknown
+      if (!res.ok) {
+        const detail =
+          typeof data === "object" && data && "detail" in data
+            ? String((data as { detail?: unknown }).detail)
+            : "Error desconocido al guardar."
+        throw new Error(detail)
+      }
+      setSaveSuccess(true)
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Error desconocido.")
+    } finally {
+      setIsSaving(false)
+    }
+  }, [apiBaseUrl, invoiceJson])
+
   const clearResults = React.useCallback(() => {
     setExtractError(null)
     setInvoiceJson(null)
+    setSaveError(null)
+    setSaveSuccess(false)
   }, [])
 
   return (
@@ -216,6 +253,28 @@ export function UploadZone({
 
               {invoiceJson && (
                 <>
+                  <div className="flex items-center justify-end">
+                    <Button
+                      onClick={saveInvoice}
+                      disabled={isSaving || saveSuccess}
+                    >
+                      {isSaving
+                        ? "Guardando..."
+                        : saveSuccess
+                          ? "Guardado ✓"
+                          : "Guardar en BD"}
+                    </Button>
+                  </div>
+                  {saveError && (
+                    <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                      {saveError}
+                    </div>
+                  )}
+                  {saveSuccess && (
+                    <div className="rounded-md border border-green-500/30 bg-green-500/5 px-3 py-2 text-sm text-green-700">
+                      Factura guardada correctamente en la base de datos.
+                    </div>
+                  )}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-md border bg-background px-3 py-2">
                       <div className="text-xs text-muted-foreground">Proveedor</div>
@@ -241,25 +300,10 @@ export function UploadZone({
                         {String(invoiceJson.direccion ?? "")}
                       </div>
                     </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-md border bg-background px-3 py-2">
-                      <div className="text-xs text-muted-foreground">Base</div>
+                      <div className="text-xs text-muted-foreground">Retención</div>
                       <div className="text-lg font-semibold tabular-nums">
-                        {Number(invoiceJson.base ?? 0).toFixed(2)}
-                      </div>
-                    </div>
-                    <div className="rounded-md border bg-background px-3 py-2">
-                      <div className="text-xs text-muted-foreground">Impuesto</div>
-                      <div className="text-lg font-semibold tabular-nums">
-                        {Number(invoiceJson.impuesto ?? 0).toFixed(2)}
-                      </div>
-                    </div>
-                    <div className="rounded-md border bg-background px-3 py-2">
-                      <div className="text-xs text-muted-foreground">Total</div>
-                      <div className="text-lg font-semibold tabular-nums">
-                        {Number(invoiceJson.total ?? 0).toFixed(2)}
+                        {Number(invoiceJson.retencion ?? 0).toFixed(2)}
                       </div>
                     </div>
                   </div>

@@ -35,9 +35,11 @@ class InvoiceSchema(BaseModel):
     proveedor: str
     dni: str
     direccion: str
+    #invoice_serie: int = Field(..., description="El número de serie o número de factura. Es un número entero.")
     base: float
     impuesto: float
     total: float
+    retencion: float = Field(default=0.0, description="Retención IRPF aplicada, si existe. Por defecto es 0.0.")
 
     if _PYDANTIC_V2:
 
@@ -130,7 +132,9 @@ def extract_invoice_data(
                 "Eres un asistente experto en contabilidad y extracción de datos de facturas en España. "
                 "Devuelve SIEMPRE todos los campos requeridos. "
                 "fecha_contabilizacion debe ser ISO (YYYY-MM-DD). "
-                "base, impuesto y total deben ser números (float) sin símbolos."
+                #"invoice_serie debe ser un número entero. "
+                "base, impuesto, total y retencion deben ser números (float) sin símbolos. "
+                "Si no encuentras retención, el valor debe ser 0.0."
             )
         )
         human = HumanMessage(
