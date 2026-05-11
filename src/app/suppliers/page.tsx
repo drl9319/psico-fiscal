@@ -35,7 +35,7 @@ export default function SuppliersPage() {
       bgColor: "bg-destructive/10",
     },
     {
-      title: "Proveedores",
+      title: "customer_namees",
       value: uniqueSuppliers.toString(),
       icon: Building2,
       color: "text-primary",
@@ -59,7 +59,7 @@ export default function SuppliersPage() {
 
   return (
     <DashboardLayout
-      title="Proveedores (Gastos)"
+      title="customer_namees (Gastos)"
       description="Gestión de facturas recibidas y gastos deducibles"
     >
       <div className="space-y-6">

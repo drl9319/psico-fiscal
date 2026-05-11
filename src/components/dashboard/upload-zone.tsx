@@ -277,27 +277,27 @@ export function UploadZone({
                   )}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-md border bg-background px-3 py-2">
-                      <div className="text-xs text-muted-foreground">Proveedor</div>
+                      <div className="text-xs text-muted-foreground">customer_name</div>
                       <div className="text-sm font-medium">
-                        {String(invoiceJson.proveedor ?? "")}
+                        {String(invoiceJson.customer_name ?? "")}
                       </div>
                     </div>
                     <div className="rounded-md border bg-background px-3 py-2">
                       <div className="text-xs text-muted-foreground">Fecha</div>
                       <div className="text-sm font-medium">
-                        {String(invoiceJson.fecha_contabilizacion ?? "")}
+                        {String(invoiceJson.accounting_date ?? "")}
                       </div>
                     </div>
                     <div className="rounded-md border bg-background px-3 py-2">
-                      <div className="text-xs text-muted-foreground">DNI</div>
+                      <div className="text-xs text-muted-foreground">customer_id</div>
                       <div className="text-sm font-medium">
-                        {String(invoiceJson.dni ?? "")}
+                        {String(invoiceJson.customer_id ?? "")}
                       </div>
                     </div>
                     <div className="rounded-md border bg-background px-3 py-2">
                       <div className="text-xs text-muted-foreground">Dirección</div>
                       <div className="text-sm font-medium">
-                        {String(invoiceJson.direccion ?? "")}
+                        {String(invoiceJson.customer_address ?? "")}
                       </div>
                     </div>
                     <div className="rounded-md border bg-background px-3 py-2">

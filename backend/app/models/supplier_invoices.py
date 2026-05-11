@@ -3,14 +3,14 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-class CustomerInvoiceSchema(BaseModel):
+class SupplierInvoiceSchema(BaseModel):
     # 'id' suele ser gestionado por la BD (serial/identity), 
     # por lo que no es necesario incluirlo en la creación.
     
     accounting_date: date
-    customer_name: str = Field(..., max_length=255)
-    customer_address: Optional[str] = Field(None)
-    customer_id: str = Field( max_length=100)
+    supplier_name: str = Field(..., max_length=255)
+    supplier_address: Optional[str] = Field(None)
+    supplier_id: str = Field(max_length=100)
     #invoice_serie: int
     
     # Usamos Decimal para los campos 'numeric' para evitar errores de precisión

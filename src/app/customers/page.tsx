@@ -2,19 +2,81 @@
 
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { DataTable } from "@/components/dashboard/data-table"
+import type { InvoiceRecord } from "@/components/dashboard/data-table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { customerInvoices } from "@/lib/mock-data"
 import { Euro, Receipt, TrendingUp, Users } from "lucide-react"
+import { useEffect, useState } from "react"
+
+interface BackendInvoice {
+  accounting_date: string; // Cambiado de accounting_date
+  customer_name: string;   // Cambiado de customer_name
+  customer_id: string;     // Cambiado de customer_id
+  customer_address: string;// Cambiado de customer_address
+  amount: number;          // Cambiado de base
+  tax: number;
+  total: number;
+  retencion: number;
+}
 
 export default function CustomersPage() {
-  const totalRevenue = customerInvoices.reduce(
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
+  const [invoices, setInvoices] = useState<InvoiceRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Transform backend response to frontend format
+  const transformInvoice = (CustomerInvoiceSchema: BackendInvoice, index: number): InvoiceRecord => {
+    
+    return {
+      id: CustomerInvoiceSchema.customer_id || `inv-${index}`,
+      date: new Date(CustomerInvoiceSchema.accounting_date),
+      invoiceNumber: `INV-${index + 1}`,
+      entityName: CustomerInvoiceSchema.customer_name,
+      baseImponible: CustomerInvoiceSchema.amount,
+      ivaPercent: CustomerInvoiceSchema.tax > 0 ? 21 : 0,
+      irpfPercent: CustomerInvoiceSchema.retencion > 0 ? 15 : 0,
+      total: CustomerInvoiceSchema.total,
+      category: "Otros", // Ajustar si hay categorías específicas
+    }
+  }
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await fetch(`${apiBaseUrl}/get_customer_invoices?limit=50`)
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
+      
+      const data: BackendInvoice[] = await response.json()
+      const transformedInvoices = data.map(transformInvoice)
+      setInvoices(transformedInvoices)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Error al cargar facturas"
+      setError(errorMessage)
+      console.error("Error fetching invoices:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchData()
+  }, [apiBaseUrl])
+
+  // Calculate stats from fetched data or mock data (fallback)
+  const dataSource = invoices.length > 0 ? invoices : customerInvoices
+  const totalRevenue = dataSource.reduce(
     (sum, inv) => sum + inv.baseImponible,
     0
   )
-  const uniqueClients = new Set(customerInvoices.map((inv) => inv.entityName))
+  const uniqueClients = new Set(dataSource.map((inv) => inv.entityName))
     .size
-  const totalInvoices = customerInvoices.length
-  const avgInvoice = totalRevenue / totalInvoices
+  const totalInvoices = dataSource.length
+  const avgInvoice = totalInvoices > 0 ? totalRevenue / totalInvoices : 0
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-ES", {
@@ -60,6 +122,13 @@ export default function CustomersPage() {
       description="Gestión de facturas emitidas y registro de ingresos"
     >
       <div className="space-y-6">
+        {error && (
+          <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+            <p className="font-semibold">Error al cargar datos:</p>
+            <p>{error}</p>
+          </div>
+        )}
+
         <div className="grid gap-4 md:grid-cols-4">
           {stats.map((stat) => (
             <Card key={stat.title}>
@@ -81,7 +150,13 @@ export default function CustomersPage() {
             <CardTitle className="text-base">Registro de Facturas</CardTitle>
           </CardHeader>
           <CardContent>
-            <DataTable data={customerInvoices} type="customer" />
+            {loading ? (
+              <div className="flex h-48 items-center justify-center">
+                <p className="text-muted-foreground">Cargando facturas...</p>
+              </div>
+            ) : (
+              <DataTable data={invoices} type="customer" />
+            )}
           </CardContent>
         </Card>
       </div>

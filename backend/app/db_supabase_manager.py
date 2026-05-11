@@ -53,10 +53,16 @@ class SupabaseRepository:
             logger.error(f"Error al crear registro en {table}: {str(e)}")
             raise
 
-    async def get_all(self, table: str) -> List[dict]:
+    async def get_all(self, table: str, limit: int = 100, order_by: str = "created_at") -> List[dict]:
         """Lee todos los registros de una tabla."""
         try:
-            response = self.client.table(table).select("*").execute()
+            response = (
+                self.client.table(table)
+                .select("*")
+                .limit(limit)
+                .order(order_by)
+                .execute()
+                )
             return response.data
         except Exception as e:
             logger.error(f"Error al obtener registros de {table}: {str(e)}")

@@ -143,7 +143,7 @@ export function DataTable({ data, type }: DataTableProps) {
             placeholder={
               type === "customer"
                 ? "Buscar cliente o factura..."
-                : "Buscar proveedor o factura..."
+                : "Buscar customer_name o factura..."
             }
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -179,7 +179,7 @@ export function DataTable({ data, type }: DataTableProps) {
             <TableRow className="bg-muted/50">
               <TableHead className="w-[100px]">Fecha</TableHead>
               <TableHead className="w-[120px]">Nº Factura</TableHead>
-              <TableHead>{type === "customer" ? "Cliente" : "Proveedor"}</TableHead>
+              <TableHead>{type === "customer" ? "Cliente" : "customer_name"}</TableHead>
               <TableHead className="text-right">Base Imponible</TableHead>
               <TableHead className="text-center w-[80px]">IVA %</TableHead>
               <TableHead className="text-center w-[80px]">IRPF %</TableHead>

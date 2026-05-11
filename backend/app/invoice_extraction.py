@@ -28,29 +28,29 @@ except Exception:  # pragma: no cover
 
 
 class InvoiceSchema(BaseModel):
-    fecha_contabilizacion: date = Field(
+    accounting_date: date = Field(
         ...,
         description="Fecha de contabilización en formato ISO (YYYY-MM-DD).",
     )
-    proveedor: str
-    dni: str
-    direccion: str
+    supplier_name: str
+    supplier_id: str
+    supplier_address: str
     #invoice_serie: int = Field(..., description="El número de serie o número de factura. Es un número entero.")
-    base: float
-    impuesto: float
+    amount: float
+    tax: float
     total: float
     retencion: float = Field(default=0.0, description="Retención IRPF aplicada, si existe. Por defecto es 0.0.")
 
     if _PYDANTIC_V2:
 
-        @field_validator("base", "impuesto", "total", mode="before")
+        @field_validator("amount", "tax", "total", mode="before")
         @classmethod
         def _coerce_float(cls, v: Any) -> float:
             return _to_float(v)
 
     else:
 
-        @field_validator("base", "impuesto", "total", pre=True)  # type: ignore[misc]
+        @field_validator("amount", "tax", "total", pre=True)  # type: ignore[misc]
         def _coerce_float(cls, v: Any) -> float:  # noqa: N805
             return _to_float(v)
 
@@ -131,9 +131,9 @@ def extract_invoice_data(
             content=(
                 "Eres un asistente experto en contabilidad y extracción de datos de facturas en España. "
                 "Devuelve SIEMPRE todos los campos requeridos. "
-                "fecha_contabilizacion debe ser ISO (YYYY-MM-DD). "
+                "accounting_date debe ser ISO (YYYY-MM-DD). "
                 #"invoice_serie debe ser un número entero. "
-                "base, impuesto, total y retencion deben ser números (float) sin símbolos. "
+                "amount, tax, total y retencion deben ser números (float) sin símbolos. "
                 "Si no encuentras retención, el valor debe ser 0.0."
             )
         )

@@ -30,7 +30,7 @@ const navigation = [
     icon: Users,
   },
   {
-    name: "Proveedores (Gastos)",
+    name: "customer_namees (Gastos)",
     href: "/suppliers",
     icon: Building2,
   },

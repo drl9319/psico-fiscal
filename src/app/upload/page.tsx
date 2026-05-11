@@ -40,14 +40,14 @@ export default function UploadPage() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <UploadZone
-            title="Facturas de Clientes"
-            description="Sube las facturas emitidas a tus pacientes y clientes (PDF)"
+            title="Facturas de proveedores"
+            description="Sube las facturas recibidas de tus proveedores (PDF)"
             acceptedTypes={[".pdf"]}
             icon="pdf"
           />
           <UploadZone
-            title="Registros de Proveedores"
-            description="Sube facturas de gastos y extractos bancarios (Excel, CSV)"
+            title="Facturas de Clientes"
+            description="Sube las facturas emitidas a tus pacientes y clientes (Excel, CSV)"
             acceptedTypes={[".xlsx", ".xls", ".csv"]}
             icon="excel"
           />
