@@ -31,7 +31,7 @@ export default function CustomersPage() {
     return {
       id: CustomerInvoiceSchema.customer_id || `inv-${index}`,
       date: new Date(CustomerInvoiceSchema.accounting_date),
-      invoiceNumber: `INV-${index + 1}`,
+      invoice_number: CustomerInvoiceSchema.invoice_number || `INV-${index + 1}`,
       entityName: CustomerInvoiceSchema.customer_name,
       baseImponible: CustomerInvoiceSchema.amount,
       ivaPercent: CustomerInvoiceSchema.tax > 0 ? 21 : 0,

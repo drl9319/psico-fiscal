@@ -1,12 +1,84 @@
 "use client"
 
+import * as React from "react"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
-import { UploadZone } from "@/components/dashboard/upload-zone"
+import { UploadZone, ExtractedInvoice } from "@/components/dashboard/upload-zone"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Shield, Sparkles, Zap } from "lucide-react"
+import { DataTable, InvoiceRecord } from "@/components/dashboard/data-table"
+import { Button } from "@/components/ui/button"
 
 export default function UploadPage() {
+  const [allExtractedInvoices, setAllExtractedInvoices] = React.useState<InvoiceRecord[]>([])
+  const [isSavingAll, setIsSavingAll] = React.useState(false)
+  const [saveAllError, setSaveAllError] = React.useState<string | null>(null)
+  const [saveAllSuccess, setSaveAllSuccess] = React.useState<boolean>(false)
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = React.useState<string[]>([])
+
+  const handleSupplierInvoicesExtracted = React.useCallback((invoices: ExtractedInvoice[]) => {
+    // Filter out error invoices for now, or handle them differently
+    const successfulInvoices = invoices.filter(inv => inv.status === 'extracted') as InvoiceRecord[]
+    setAllExtractedInvoices((prev) => [...prev, ...successfulInvoices])
+  }, [])
+
+  const handleCustomerInvoicesExtracted = React.useCallback((invoices: ExtractedInvoice[]) => {
+    const successfulInvoices = invoices.filter(inv => inv.status === 'extracted') as InvoiceRecord[]
+    setAllExtractedInvoices((prev) => [...prev, ...successfulInvoices])
+  }, [])
+
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
+
+  const saveAllInvoices = React.useCallback(async () => {
+    const invoicesToSave = allExtractedInvoices.filter(invoice => selectedInvoiceIds.includes(invoice.id));
+    if (invoicesToSave.length === 0) return
+
+    const formattedInvoices = invoicesToSave.map(invoice => ({
+      accounting_date: invoice.accounting_date.toISOString().split('T')[0], // YYYY-MM-DD
+      supplier_name: invoice.supplier_name,
+      invoice_number: invoice.invoice_number,
+      supplier_id: invoice.supplier_id || "N/A", // Provide a default if null
+      supplier_address: invoice.supplier_address || "N/A", // Provide a default if null
+      amount: invoice.amount,
+      tax: invoice.amount * (invoice.taxPercent / 100), // Calculate tax amount
+      total: invoice.total,
+      retencion: invoice.amount * (invoice.retencionPercent / 100), // Calculate retention amount
+      category: invoice.category,
+      fileName: invoice.fileName,
+      status: invoice.status,
+    }));
+
+    setSaveAllError(null)
+    setSaveAllSuccess(false)
+    setIsSavingAll(true)
+
+    try {
+      const res = await fetch(`${apiBaseUrl}/save-multiple-invoices`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formattedInvoices),
+      })
+
+      const data = (await res.json()) as unknown
+      if (!res.ok) {
+        const detail =
+          typeof data === "object" && data && "detail" in data
+            ? String((data as { detail?: unknown }).detail)
+            : "Error desconocido al guardar todas las facturas."
+        throw new Error(detail)
+      }
+      setSaveAllSuccess(true)
+      // Remove saved invoices from the table
+      setAllExtractedInvoices(prev => prev.filter(invoice => !selectedInvoiceIds.includes(invoice.id)))
+      setSelectedInvoiceIds([]) // Clear selection after saving
+    } catch (e) {
+      setSaveAllError(e instanceof Error ? e.message : "Error desconocido al guardar.")
+    } finally {
+      setIsSavingAll(false)
+    }
+  }, [apiBaseUrl, allExtractedInvoices, selectedInvoiceIds])
   return (
     <DashboardLayout
       title="Centro de Subida"
@@ -44,14 +116,52 @@ export default function UploadPage() {
             description="Sube las facturas recibidas de tus proveedores (PDF)"
             acceptedTypes={[".pdf"]}
             icon="pdf"
+            onInvoicesExtracted={handleSupplierInvoicesExtracted}
           />
           <UploadZone
             title="Facturas de Clientes"
             description="Sube las facturas emitidas a tus pacientes y clientes (Excel, CSV)"
             acceptedTypes={[".xlsx", ".xls", ".csv"]}
             icon="excel"
+            onInvoicesExtracted={handleCustomerInvoicesExtracted}
           />
         </div>
+
+        {allExtractedInvoices.length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-base font-medium">Facturas Extraídas</CardTitle>
+              <Button
+                onClick={saveAllInvoices}
+                disabled={isSavingAll || selectedInvoiceIds.length === 0}
+              >
+                {isSavingAll
+                  ? "Guardando seleccionadas..."
+                  : saveAllSuccess
+                    ? "Seleccionadas guardadas ✓"
+                    : `Guardar ${selectedInvoiceIds.length} seleccionadas en BD`}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {saveAllError && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive mb-4">
+                  {saveAllError}
+                </div>
+              )}
+              {saveAllSuccess && (
+                <div className="rounded-md border border-green-500/30 bg-green-500/5 px-3 py-2 text-sm text-green-700 mb-4">
+                  Todas las facturas guardadas correctamente en la base de datos.
+                </div>
+              )}
+              <DataTable
+                data={allExtractedInvoices}
+                type="supplier"
+                onDataChange={setAllExtractedInvoices}
+                onSelectedChange={setSelectedInvoiceIds}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

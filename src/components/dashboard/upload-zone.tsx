@@ -7,14 +7,23 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { InvoiceRecord } from "@/components/dashboard/data-table"
 
 type UploadZoneIcon = "pdf" | "excel"
+
+export type ExtractedInvoice = InvoiceRecord & {
+  id: string
+  fileName: string
+  status: 'pending' | 'extracting' | 'extracted' | 'error'
+  errorMessage?: string
+}
 
 interface UploadZoneProps {
   title: string
   description: string
   acceptedTypes: string[]
   icon: UploadZoneIcon
+  onInvoicesExtracted: (invoices: ExtractedInvoice[]) => void
 }
 
 export function UploadZone({
@@ -22,18 +31,13 @@ export function UploadZone({
   description,
   acceptedTypes,
   icon,
+  onInvoicesExtracted,
 }: UploadZoneProps) {
   const inputRef = React.useRef<HTMLInputElement | null>(null)
   const [isDragging, setIsDragging] = React.useState(false)
   const [files, setFiles] = React.useState<File[]>([])
-  const [isExtracting, setIsExtracting] = React.useState(false)
-  const [extractError, setExtractError] = React.useState<string | null>(null)
-  const [invoiceJson, setInvoiceJson] = React.useState<Record<string, unknown> | null>(
-    null
-  )
-  const [isSaving, setIsSaving] = React.useState(false)
-  const [saveError, setSaveError] = React.useState<string | null>(null)
-  const [saveSuccess, setSaveSuccess] = React.useState<boolean>(false)
+  const [extractedInvoices, setExtractedInvoices] = React.useState<ExtractedInvoice[]>([])
+  const [isProcessingAll, setIsProcessingAll] = React.useState(false)
 
   const acceptAttr = acceptedTypes.join(",")
   const Icon = icon === "pdf" ? FileText : FileSpreadsheet
@@ -45,84 +49,104 @@ export function UploadZone({
     setFiles((prev) => [...prev, ...Array.from(next)])
   }, [])
 
-  const extractFromLatestPdf = React.useCallback(async () => {
-    setExtractError(null)
-    setInvoiceJson(null)
+  const handleExtractAll = React.useCallback(async () => {
+    setIsProcessingAll(true)
+    const pdfFiles = files.filter((f) => f.type === "application/pdf")
+    const newExtracted: ExtractedInvoice[] = []
 
-    const latest = [...files].reverse().find((f) => f.type === "application/pdf")
-    if (!latest) {
-      setExtractError("No hay ningún PDF seleccionado.")
-      return
-    }
-
-    setIsExtracting(true)
-    try {
-      const form = new FormData()
-      form.append("file", latest, latest.name)
-
-      const res = await fetch(`${apiBaseUrl}/extract-invoice`, {
-        method: "POST",
-        body: form,
-      })
-
-      const data = (await res.json()) as unknown
-      if (!res.ok) {
-        const detail =
-          typeof data === "object" && data && "detail" in data
-            ? String((data as { detail?: unknown }).detail)
-            : "Error desconocido extrayendo la factura."
-        throw new Error(detail)
-      }
-
-      if (!data || typeof data !== "object") {
-        throw new Error("La API devolvió un JSON inválido.")
-      }
-
-      setInvoiceJson(data as Record<string, unknown>)
-    } catch (e) {
-      setExtractError(e instanceof Error ? e.message : "Error desconocido.")
-    } finally {
-      setIsExtracting(false)
-    }
-  }, [apiBaseUrl, files])
-
-  const saveInvoice = React.useCallback(async () => {
-    if (!invoiceJson) return
-
-    setSaveError(null)
-    setSaveSuccess(false)
-    setIsSaving(true)
-
-    try {
-      const res = await fetch(`${apiBaseUrl}/save-invoice`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+    for (const file of pdfFiles) {
+      const id = `${file.name}-${file.size}`
+      setExtractedInvoices((prev) => [
+        ...prev,
+        {
+          id,
+          fileName: file.name,
+          status: 'extracting',
+          accounting_date: new Date(), // Placeholder
+          supplier_name: "", // Placeholder
+          supplier_id: "", // Placeholder
+          supplier_address: "", // Placeholder
+          amount: 0, // Placeholder
+          taxPercent: 0, // Placeholder (renamed from tax)
+          total: 0, // Placeholder
+          retencionPercent: 0.0, // Placeholder (renamed from retencion)
+          invoice_number: "", // Required by InvoiceRecord
+          category: "Otros", // Required by InvoiceRecord
         },
-        body: JSON.stringify(invoiceJson),
-      })
+      ])
 
-      const data = (await res.json()) as unknown
-      if (!res.ok) {
-        const detail =
-          typeof data === "object" && data && "detail" in data
-            ? String((data as { detail?: unknown }).detail)
-            : "Error desconocido al guardar."
-        throw new Error(detail)
+      try {
+        const form = new FormData()
+        form.append("file", file, file.name)
+
+        const res = await fetch(`${apiBaseUrl}/extract-invoice`, {
+          method: "POST",
+          body: form,
+        })
+
+        const data = (await res.json()) as unknown
+        if (!res.ok) {
+          const detail =
+            typeof data === "object" && data && "detail" in data
+              ? String((data as { detail?: unknown }).detail)
+              : `Error desconocido extrayendo ${file.name}.`
+          throw new Error(detail)
+        }
+
+        if (!data || typeof data !== "object") {
+          throw new Error("La API devolvió un JSON inválido.")
+        }
+
+        const invoiceData = data as Record<string, unknown>
+        const record: InvoiceRecord = {
+          id: id,
+          accounting_date: new Date(String(invoiceData.accounting_date)),
+          invoice_number: String(invoiceData.invoice_number ?? 'N/A'),
+          supplier_name: String(invoiceData.supplier_name),
+          supplier_id: String(invoiceData.supplier_id ?? 'N/A'),
+          supplier_address: String(invoiceData.supplier_address ?? 'N/A'),
+          amount: Number(invoiceData.amount),
+          taxPercent: Number(invoiceData.amount && invoiceData.tax ? (Number(invoiceData.tax) / Number(invoiceData.amount)) * 100 : 0),
+          retencionPercent: Number(invoiceData.amount && invoiceData.retencion ? (Number(invoiceData.retencion) / Number(invoiceData.amount)) * 100 : 0),
+          total: Number(invoiceData.total),
+          category: "Otros",
+        }
+
+        newExtracted.push({
+          ...record,
+          id: id,
+          fileName: file.name,
+          status: 'extracted',
+          errorMessage: undefined,
+        })
+      } catch (e) {
+        newExtracted.push({
+          id: id,
+          fileName: file.name,
+          status: 'error',
+          errorMessage: e instanceof Error ? e.message : "Error desconocido.",
+          // Add placeholder values for InvoiceRecord
+          accounting_date: new Date(),
+          supplier_name: "",
+          supplier_id: "",
+          supplier_address: "",
+          amount: 0,
+          taxPercent: 0,
+          total: 0,
+          retencionPercent: 0.0,
+          invoice_number: "",
+          category: "Otros",
+        })
       }
-      setSaveSuccess(true)
-    } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Error desconocido.")
-    } finally {
-      setIsSaving(false)
+      setExtractedInvoices(current => current.map(inv => newExtracted.find(ne => ne.id === inv.id) || inv));
     }
-  }, [apiBaseUrl, invoiceJson])
+    setIsProcessingAll(false)
+    onInvoicesExtracted(newExtracted)
+  }, [apiBaseUrl, files, onInvoicesExtracted])
 
   const clearResults = React.useCallback(() => {
-    setExtractError(null)
-    setInvoiceJson(null)
-    setSaveError(null)
-    setSaveSuccess(false)
+    setFiles([])
+    setExtractedInvoices([])
   }, [])
 
   return (
@@ -196,10 +220,10 @@ export function UploadZone({
             </Button>
             {isPdfMode && (
               <Button
-                onClick={extractFromLatestPdf}
-                disabled={files.length === 0 || isExtracting}
+                onClick={handleExtractAll}
+                disabled={files.length === 0 || isProcessingAll}
               >
-                {isExtracting ? "Extrayendo..." : "Extraer datos"}
+                {isProcessingAll ? "Extrayendo..." : "Extraer datos"}
               </Button>
             )}
           </div>
@@ -226,15 +250,15 @@ export function UploadZone({
           </div>
         )}
 
-        {isPdfMode && (extractError || invoiceJson) && (
+        {isPdfMode && extractedInvoices.length > 0 && (
           <div className="rounded-lg border bg-card">
             <div className="flex items-center justify-between gap-3 border-b px-4 py-2">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-muted-foreground">
                   Resultado extracción
                 </span>
-                {extractError ? (
-                  <Badge variant="destructive">Error</Badge>
+                {extractedInvoices.some(inv => inv.status === 'error') ? (
+                  <Badge variant="destructive">Errores</Badge>
                 ) : (
                   <Badge variant="secondary">OK</Badge>
                 )}
@@ -245,79 +269,27 @@ export function UploadZone({
             </div>
 
             <div className="space-y-4 px-4 py-4">
-              {extractError && (
-                <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                  {extractError}
-                </div>
-              )}
-
-              {invoiceJson && (
-                <>
-                  <div className="flex items-center justify-end">
-                    <Button
-                      onClick={saveInvoice}
-                      disabled={isSaving || saveSuccess}
-                    >
-                      {isSaving
-                        ? "Guardando..."
-                        : saveSuccess
-                          ? "Guardado ✓"
-                          : "Guardar en BD"}
-                    </Button>
+              {extractedInvoices.map((invoice) => (
+                <div key={invoice.id} className={cn(
+                  "rounded-md border p-3",
+                  invoice.status === 'error' ? 'border-destructive/30 bg-destructive/5' : 'bg-background'
+                )}>
+                  <div className="flex items-center justify-between gap-2 text-sm font-medium">
+                    <span>{invoice.fileName}</span>
+                    {invoice.status === 'extracting' && <Badge variant="secondary">Extrayendo...</Badge>}
+                    {invoice.status === 'extracted' && <Badge variant="secondary">Extraído</Badge>}
+                    {invoice.status === 'error' && <Badge variant="destructive">Error</Badge>}
                   </div>
-                  {saveError && (
-                    <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                      {saveError}
-                    </div>
+                  {invoice.errorMessage && (
+                    <p className="mt-2 text-sm text-destructive">{invoice.errorMessage}</p>
                   )}
-                  {saveSuccess && (
-                    <div className="rounded-md border border-green-500/30 bg-green-500/5 px-3 py-2 text-sm text-green-700">
-                      Factura guardada correctamente en la base de datos.
-                    </div>
-                  )}
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-md border bg-background px-3 py-2">
-                      <div className="text-xs text-muted-foreground">customer_name</div>
-                      <div className="text-sm font-medium">
-                        {String(invoiceJson.customer_name ?? "")}
-                      </div>
-                    </div>
-                    <div className="rounded-md border bg-background px-3 py-2">
-                      <div className="text-xs text-muted-foreground">Fecha</div>
-                      <div className="text-sm font-medium">
-                        {String(invoiceJson.accounting_date ?? "")}
-                      </div>
-                    </div>
-                    <div className="rounded-md border bg-background px-3 py-2">
-                      <div className="text-xs text-muted-foreground">customer_id</div>
-                      <div className="text-sm font-medium">
-                        {String(invoiceJson.customer_id ?? "")}
-                      </div>
-                    </div>
-                    <div className="rounded-md border bg-background px-3 py-2">
-                      <div className="text-xs text-muted-foreground">Dirección</div>
-                      <div className="text-sm font-medium">
-                        {String(invoiceJson.customer_address ?? "")}
-                      </div>
-                    </div>
-                    <div className="rounded-md border bg-background px-3 py-2">
-                      <div className="text-xs text-muted-foreground">Retención</div>
-                      <div className="text-lg font-semibold tabular-nums">
-                        {Number(invoiceJson.retencion ?? 0).toFixed(2)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border bg-background">
-                    <div className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">
-                      JSON completo
-                    </div>
-                    <pre className="max-h-64 overflow-auto px-3 py-3 text-xs leading-relaxed">
-                      {JSON.stringify(invoiceJson, null, 2)}
+                  {invoice.status === 'extracted' && (
+                    <pre className="mt-2 max-h-40 overflow-auto text-xs leading-relaxed">
+                      {JSON.stringify(invoice, null, 2)}
                     </pre>
-                  </div>
-                </>
-              )}
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}

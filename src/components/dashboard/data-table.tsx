@@ -48,19 +48,29 @@ import { DateRangePicker } from "./date-range-picker"
 
 export interface InvoiceRecord {
   id: string
-  date: Date
-  invoiceNumber: string
-  entityName: string
-  baseImponible: number
-  ivaPercent: number
-  irpfPercent: number
+  accounting_date: Date // Changed from 'date' to 'accounting_date'
+  invoice_number: string
+  supplier_name: string // Changed from 'entityName' to 'supplier_name'
+  supplier_id: string | null // Added supplier_id
+  supplier_address: string | null // Added supplier_address
+  amount: number // Changed from 'baseImponible' to 'amount'
+  taxPercent: number // Changed from 'ivaPercent' to 'taxPercent'
+  retencionPercent: number // Changed from 'irpfPercent' to 'retencionPercent'
   total: number
   category: string
+  fileName: string // Added fileName
+  status: string // Added status
+  _isEditing?: boolean
+  _isSelected?: boolean
+  _isValid?: boolean
+  _originalData?: InvoiceRecord // To store original data for rollback
 }
 
 interface DataTableProps {
   data: InvoiceRecord[]
   type: "customer" | "supplier"
+  onDataChange?: (data: InvoiceRecord[]) => void
+  onSelectedChange?: (selectedIds: string[]) => void
 }
 
 const categories = [
@@ -85,12 +95,22 @@ const categoryColors: Record<string, string> = {
   Otros: "bg-muted text-muted-foreground",
 }
 
-export function DataTable({ data, type }: DataTableProps) {
+export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTableProps) {
   const [searchTerm, setSearchTerm] = React.useState("")
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>()
   const [categoryFilter, setCategoryFilter] = React.useState<string>("all")
   const [currentPage, setCurrentPage] = React.useState(1)
+  const [editedData, setEditedData] = React.useState<InvoiceRecord[]>(data)
+  const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set())
   const itemsPerPage = 10
+
+  React.useEffect(() => {
+    setEditedData(data)
+  }, [data])
+
+  React.useEffect(() => {
+    onSelectedChange?.(Array.from(selectedRows))
+  }, [selectedRows, onSelectedChange])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-ES", {
@@ -100,11 +120,11 @@ export function DataTable({ data, type }: DataTableProps) {
   }
 
   const filteredData = React.useMemo(() => {
-    return data.filter((record) => {
+    return editedData.filter((record) => {
       const matchesSearch =
         searchTerm === "" ||
-        record.entityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        record.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase())
+        record.supplier_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        record.invoice_number.toLowerCase().includes(searchTerm.toLowerCase())
 
       const matchesDateRange =
         !dateRange?.from ||
@@ -116,7 +136,7 @@ export function DataTable({ data, type }: DataTableProps) {
 
       return matchesSearch && matchesDateRange && matchesCategory
     })
-  }, [data, searchTerm, dateRange, categoryFilter])
+  }, [editedData, searchTerm, dateRange, categoryFilter])
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
   const paginatedData = filteredData.slice(
@@ -124,13 +144,78 @@ export function DataTable({ data, type }: DataTableProps) {
     currentPage * itemsPerPage
   )
 
+  const handleEditClick = React.useCallback((id: string) => {
+    setEditedData((prev) =>
+      prev.map((record) =>
+        record.id === id
+          ? { ...record, _isEditing: true, _originalData: { ...record } }
+          : record
+      )
+    )
+  }, [])
+
+  const handleSaveClick = React.useCallback(
+    (id: string) => {
+      setEditedData((prev) =>
+        prev.map((record) => (record.id === id ? { ...record, _isEditing: false } : record))
+      )
+      onDataChange?.(editedData.map((record) => (record.id === id ? { ...record, _isEditing: false } : record)))
+    },
+    [editedData, onDataChange]
+  )
+
+  const handleCancelClick = React.useCallback((id: string) => {
+    setEditedData((prev) =>
+      prev.map((record) =>
+        record.id === id && record._originalData
+          ? { ...record._originalData, _isEditing: false }
+          : record
+      )
+    )
+  }, [])
+
+  const handleInputChange = React.useCallback(
+    (id: string, field: keyof InvoiceRecord, value: any) => {
+      setEditedData((prev) =>
+        prev.map((record) => (record.id === id ? { ...record, [field]: value } : record))
+      )
+    },
+    []
+  )
+
+  const handleSelectRow = React.useCallback((id: string, isSelected: boolean) => {
+    setSelectedRows((prev) => {
+      const newSelection = new Set(prev)
+      if (isSelected) {
+        newSelection.add(id)
+      } else {
+        newSelection.delete(id)
+      }
+      return newSelection
+    })
+  }, [])
+
+  const handleSelectAll = React.useCallback((isSelected: boolean) => {
+    setSelectedRows((prev) => {
+      const newSelection = new Set(prev)
+      paginatedData.forEach((record) => {
+        if (isSelected) {
+          newSelection.add(record.id)
+        } else {
+          newSelection.delete(record.id)
+        }
+      })
+      return newSelection
+    })
+  }, [paginatedData])
+
   const summary = React.useMemo(() => {
     return filteredData.reduce(
       (acc, record) => ({
-        baseImponible: acc.baseImponible + record.baseImponible,
+        amount: acc.amount + record.amount,
         total: acc.total + record.total,
       }),
-      { baseImponible: 0, total: 0 }
+      { amount: 0, total: 0 }
     )
   }, [filteredData])
 
@@ -143,7 +228,7 @@ export function DataTable({ data, type }: DataTableProps) {
             placeholder={
               type === "customer"
                 ? "Buscar cliente o factura..."
-                : "Buscar customer_name o factura..."
+                : "Buscar proveedor o factura..."
             }
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -177,22 +262,30 @@ export function DataTable({ data, type }: DataTableProps) {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="w-[100px]">Fecha</TableHead>
+              <TableHead className="w-[50px]">
+                <input
+                  type="checkbox"
+                  checked={selectedRows.size === paginatedData.length && paginatedData.length > 0}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  className="form-checkbox"
+                />
+              </TableHead>
+              <TableHead className="w-[100px]">Fecha Contable</TableHead>
               <TableHead className="w-[120px]">Nº Factura</TableHead>
-              <TableHead>{type === "customer" ? "Cliente" : "customer_name"}</TableHead>
+              <TableHead>{type === "customer" ? "Cliente" : "Proveedor"}</TableHead>
               <TableHead className="text-right">Base Imponible</TableHead>
               <TableHead className="text-center w-[80px]">IVA %</TableHead>
               <TableHead className="text-center w-[80px]">IRPF %</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead className="w-[120px]">Categoría</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[100px] text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginatedData.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={10}
                   className="h-24 text-center text-muted-foreground"
                 >
                   No se encontraron registros
@@ -200,65 +293,174 @@ export function DataTable({ data, type }: DataTableProps) {
               </TableRow>
             ) : (
               paginatedData.map((record) => (
-                <TableRow key={record.id}>
-                  <TableCell className="font-mono text-sm">
-                    {format(record.date, "dd/MM/yy", { locale: es })}
+                <TableRow key={record.id} className={record._isValid === false ? "bg-destructive/5" : undefined}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={selectedRows.has(record.id)}
+                      onChange={(e) => handleSelectRow(record.id, e.target.checked)}
+                      className="form-checkbox"
+                    />
                   </TableCell>
                   <TableCell className="font-mono text-sm">
-                    {record.invoiceNumber}
+                    {record._isEditing ? (
+                      <Input
+                        type="date"
+                        value={format(record.accounting_date, "yyyy-MM-dd")}
+                        onChange={(e) =>
+                          handleInputChange(record.id, "accounting_date", new Date(e.target.value))
+                        }
+                      />
+                    ) : (
+                      format(record.accounting_date, "dd/MM/yy", { locale: es })
+                    )}
                   </TableCell>
-                  <TableCell className="font-medium">{record.entityName}</TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {record._isEditing ? (
+                      <Input
+                        value={record.invoice_number}
+                        onChange={(e) =>
+                          handleInputChange(record.id, "invoice_number", e.target.value)
+                        }
+                      />
+                    ) : (
+                      record.invoice_number
+                    )}
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {record._isEditing ? (
+                      <Input
+                        value={record.supplier_name}
+                        onChange={(e) =>
+                          handleInputChange(record.id, "supplier_name", e.target.value)
+                        }
+                      />
+                    ) : (
+                      record.supplier_name
+                    )}
+                  </TableCell>
                   <TableCell className="text-right font-mono">
-                    {formatCurrency(record.baseImponible)}
+                    {record._isEditing ? (
+                      <Input
+                        type="number"
+                        value={record.amount}
+                        onChange={(e) =>
+                          handleInputChange(record.id, "amount", parseFloat(e.target.value))
+                        }
+                      />
+                    ) : (
+                      formatCurrency(record.amount)
+                    )}
                   </TableCell>
                   <TableCell className="text-center">
-                    <Badge variant="outline" className="font-mono text-xs">
-                      {record.ivaPercent}%
-                    </Badge>
+                    {record._isEditing ? (
+                      <Input
+                        type="number"
+                        value={record.taxPercent}
+                        onChange={(e) =>
+                          handleInputChange(record.id, "taxPercent", parseFloat(e.target.value))
+                        }
+                      />
+                    ) : (
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {record.taxPercent}%
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-center">
-                    <Badge
-                      variant="outline"
-                      className="font-mono text-xs text-destructive border-destructive/30"
-                    >
-                      {record.irpfPercent}%
-                    </Badge>
+                    {record._isEditing ? (
+                      <Input
+                        type="number"
+                        value={record.retencionPercent}
+                        onChange={(e) =>
+                          handleInputChange(record.id, "retencionPercent", parseFloat(e.target.value))
+                        }
+                      />
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="font-mono text-xs text-destructive border-destructive/30"
+                      >
+                        {record.retencionPercent}%
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-right font-mono font-medium">
-                    {formatCurrency(record.total)}
+                    {record._isEditing ? (
+                      <Input
+                        type="number"
+                        value={record.total}
+                        onChange={(e) =>
+                          handleInputChange(record.id, "total", parseFloat(e.target.value))
+                        }
+                      />
+                    ) : (
+                      formatCurrency(record.total)
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      className={`text-xs ${
-                        categoryColors[record.category] || categoryColors.Otros
-                      }`}
-                    >
-                      {record.category}
-                    </Badge>
+                    {record._isEditing ? (
+                      <Select
+                        value={record.category}
+                        onValueChange={(value) =>
+                          handleInputChange(record.id, "category", value)
+                        }
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue placeholder="Categoría" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                              {cat}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge
+                        className={`text-xs ${
+                          categoryColors[record.category] || categoryColors.Otros
+                        }`}
+                      >
+                        {record.category}
+                      </Badge>
+                    )}
                   </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
+                  <TableCell className="text-right">
+                    {record._isEditing ? (
+                      <div className="flex items-center gap-2 justify-end">
+                        <Button variant="ghost" size="sm" onClick={() => handleSaveClick(record.id)}>
+                          Guardar
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Ver detalle
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                        <Button variant="ghost" size="sm" onClick={() => handleCancelClick(record.id)}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Ver detalle
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditClick(record.id)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -274,7 +476,7 @@ export function DataTable({ data, type }: DataTableProps) {
             <span>
               <span className="text-muted-foreground">Base: </span>
               <span className="font-mono font-medium">
-                {formatCurrency(summary.baseImponible)}
+                {formatCurrency(summary.amount)}
               </span>
             </span>
             <span>

@@ -30,12 +30,12 @@ except Exception:  # pragma: no cover
 class InvoiceSchema(BaseModel):
     accounting_date: date = Field(
         ...,
-        description="Fecha de contabilización en formato ISO (YYYY-MM-DD).",
+        description="The accounting or invoice date found in the document (YYYY-MM-DD).",
     )
-    supplier_name: str
-    supplier_id: str
-    supplier_address: str
-    #invoice_serie: int = Field(..., description="El número de serie o número de factura. Es un número entero.")
+    supplier_name: str = Field(..., description="Legal name of the issuer/vendor.")
+    supplier_id: str = Field(..., description="Tax ID, CIF, or NIF of the supplier.")
+    supplier_address: str = Field(..., description="Full physical address of the supplier.")
+    invoice_number: str = Field(..., description="The unique invoice reference number (e.g., ES-00000003107/26).")
     amount: float
     tax: float
     total: float
@@ -88,11 +88,21 @@ def extract_invoice_data(
     max_chars: int = 120_000,
 ) -> InvoiceSchema:
     """
-    Extrae datos de una factura desde un PDF y devuelve un `InvoiceSchema` validado.
+    Extract invoice data from the provided PDF content and return a validated `InvoiceSchema` object.
 
-    - Usa Gemini vía `ChatGoogleGenerativeAI` y `with_structured_output(InvoiceSchema)`.
-    - Extrae texto con `PyPDFLoader` y hace fallback a OCR si está disponible.
-    - Lee `GOOGLE_API_KEY` desde variables de entorno (opcionalmente cargadas desde `.env.local`).
+    TECHNICAL REQUIREMENTS:
+    - Use Gemini via `ChatGoogleGenerativeAI` with `.with_structured_output(InvoiceSchema)`.
+    - Process the PDF using `PyPDFLoader`. If the extracted text is empty or unreadable, trigger an OCR fallback mechanism to ensure data capture.
+    - Ensure `GOOGLE_API_KEY` is retrieved from environment variables (loaded via `.env.local`).
+
+    EXTRACTION RULES:
+    1. Identify the Supplier: Extract the legal name, tax ID (CIF/NIF), and full address of the issuer.
+    2. Date Formatting: Locate the invoice/accounting date and convert it to ISO format (YYYY-MM-DD).
+    3. Invoice Reference: Capture the full `invoice_number` string, including prefixes and special characters (e.g., "ES-00000003107/26").
+    4. Financial Totals: Extract `amount` (taxable base), `tax` (VAT/IVA amount), `total`, and `retencion` (IRPF) as float values. 
+    5. Validation: If a field is missing or ambiguous, return `null` for that specific field rather than guessing.
+
+    The output must strictly conform to the `InvoiceSchema` structure.
     """
 
     _load_env_if_possible()
@@ -129,18 +139,18 @@ def extract_invoice_data(
 
         system = SystemMessage(
             content=(
-                "Eres un asistente experto en contabilidad y extracción de datos de facturas en España. "
-                "Devuelve SIEMPRE todos los campos requeridos. "
-                "accounting_date debe ser ISO (YYYY-MM-DD). "
-                #"invoice_serie debe ser un número entero. "
-                "amount, tax, total y retencion deben ser números (float) sin símbolos. "
-                "Si no encuentras retención, el valor debe ser 0.0."
+                "You are an expert assistant in accounting and invoice data extraction in Spain. "
+                "It ALWAYS returns all required fields. "
+                "accounting_date must be in ISO format (YYYY-MM-DD). "
+                #"invoice_serie must be an integer. "
+                "amount, tax, total and retencion must be numbers (float) without symbols. "
+                "If you don't find retention, the value must be 0.0."
             )
         )
         human = HumanMessage(
             content=(
-                "Extrae los datos estructurados de esta factura.\n\n"
-                "=== TEXTO DE LA FACTURA (puede tener ruido) ===\n"
+                "Extract the structured data from this invoice.\n\n"
+                "=== INVOICE TEXT (may contain noise) ===\n"
                 f"{text}\n"
             )
         )

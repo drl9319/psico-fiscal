@@ -11,7 +11,7 @@ class SupplierInvoiceSchema(BaseModel):
     supplier_name: str = Field(..., max_length=255)
     supplier_address: Optional[str] = Field(None)
     supplier_id: str = Field(max_length=100)
-    #invoice_serie: int
+    invoice_number: str = Field(..., description="El número de factura o un identificador único.")
     
     # Usamos Decimal para los campos 'numeric' para evitar errores de precisión
     amount: Decimal = Field( ge=0)
