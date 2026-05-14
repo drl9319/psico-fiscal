@@ -2,6 +2,9 @@ from __future__ import annotations
 import logging
 from decimal import Decimal
 from typing import List
+import tempfile
+import os
+import json
 
 from fastapi import FastAPI, File, HTTPException, UploadFile, logger
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .models.supplier_invoices import SupplierInvoiceSchema
 
 from .invoice_extraction import InvoiceSchema, extract_invoice_data
+from .excel_extraction import extract_excel_data
 from .models.customer_invoices import CustomerInvoiceSchema
 from .db_supabase_manager import SupabaseRepository
 from pydantic import ValidationError
@@ -52,6 +56,7 @@ async def extract_invoice_endpoint(file: UploadFile = File(...)) -> InvoiceSchem
             "taxPercent": 20.97959183673469,
             "retencionPercent": 0,
             "total": 14.82,
+            "tax": 2.57,
              "category": "Otros",
             "fileName": "ES_00000003107_26.pdf",
             "status": "extracted"
@@ -154,4 +159,31 @@ async def get_supplier_invoices_endpoint(limit: int = 100):
     repo = SupabaseRepository.get_instance()
     logger.error(f"Prueba comienzo a leer facturas, repo={repo}")
     return await repo.get_all("supplier_invoices", limit=limit)
+
+@app.post("/extract-excel")
+async def extract_excel_data_endpoint(file: UploadFile = File(...)):
+    logger.info("--- Entro en extract excel")
+    if file.content_type not in {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel"}:
+        raise HTTPException(status_code=415, detail="Solo se acepta Excel (.xlsx, .xls).")
+
+    excel_bytes = await file.read()
+    if not excel_bytes:
+        raise HTTPException(status_code=400, detail="El archivo Excel está vacío.")
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
+        temp_file.write(excel_bytes)
+        temp_file_path = temp_file.name
+
+    try:
+        # Call the excel_extraction function
+        json_data = extract_excel_data(temp_file_path)
+        #json_data = json_data.fillna("")
+        return json.loads(json_data)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al procesar el archivo Excel: {e}") from e
+    finally:
+        # Clean up the temporary file
+        os.unlink(temp_file_path)
 

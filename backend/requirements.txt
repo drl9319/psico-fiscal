@@ -10,6 +10,7 @@ langchain-community>=0.2.0
 langchain-google-genai>=1.0.0
 
 pypdf>=4.2.0
+pandas
 
 # Optional OCR fallback (only if needed):
 # pdf2image>=1.17.0

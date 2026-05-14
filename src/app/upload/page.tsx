@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 
 export default function UploadPage() {
   const [allExtractedInvoices, setAllExtractedInvoices] = React.useState<InvoiceRecord[]>([])
+  const [extractedExcelData, setExtractedExcelData] = React.useState<InvoiceRecord[]>([])
   const [isSavingAll, setIsSavingAll] = React.useState(false)
   const [saveAllError, setSaveAllError] = React.useState<string | null>(null)
   const [saveAllSuccess, setSaveAllSuccess] = React.useState<boolean>(false)
@@ -25,6 +26,10 @@ export default function UploadPage() {
   const handleCustomerInvoicesExtracted = React.useCallback((invoices: ExtractedInvoice[]) => {
     const successfulInvoices = invoices.filter(inv => inv.status === 'extracted') as InvoiceRecord[]
     setAllExtractedInvoices((prev) => [...prev, ...successfulInvoices])
+  }, [])
+
+  const handleExcelDataExtracted = React.useCallback((data: InvoiceRecord[]) => {
+    setExtractedExcelData((prev) => [...prev, ...data]);
   }, [])
 
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
@@ -123,7 +128,8 @@ export default function UploadPage() {
             description="Sube las facturas emitidas a tus pacientes y clientes (Excel, CSV)"
             acceptedTypes={[".xlsx", ".xls", ".csv"]}
             icon="excel"
-            onInvoicesExtracted={handleCustomerInvoicesExtracted}
+            onInvoicesExtracted={handleExcelDataExtracted}
+            endpoint="/extract-excel"
           />
         </div>
 
@@ -158,6 +164,21 @@ export default function UploadPage() {
                 type="supplier"
                 onDataChange={setAllExtractedInvoices}
                 onSelectedChange={setSelectedInvoiceIds}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {extractedExcelData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-medium">Contenido del Excel</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                data={extractedExcelData}
+                type="customer"
+                onDataChange={setExtractedExcelData}
               />
             </CardContent>
           </Card>
