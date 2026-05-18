@@ -15,6 +15,7 @@ from .invoice_extraction import InvoiceSchema, extract_invoice_data
 from .excel_extraction import extract_excel_data
 from .models.customer_invoices import CustomerInvoiceSchema
 from .db_supabase_manager import SupabaseRepository
+from .aeat_models_calculate import get_customer_invoices_summary, get_supplier_invoices_summary, InvoiceSummaryResponse
 from pydantic import ValidationError
 
 app = FastAPI(title="Psico-Fiscal API")
@@ -159,6 +160,52 @@ async def get_supplier_invoices_endpoint(limit: int = 100):
     repo = SupabaseRepository.get_instance()
     logger.error(f"Prueba comienzo a leer facturas, repo={repo}")
     return await repo.get_all("supplier_invoices", limit=limit)
+
+@app.get("/customer_invoices_summary", response_model=InvoiceSummaryResponse)
+async def get_customer_invoices_summary_endpoint(
+    start_date: str,
+    end_date: str,
+):
+    """
+    Get aggregated customer invoices data (amount, tax, total) between two dates.
+    
+    Query Parameters:
+    - start_date: ISO format date string (e.g., "2024-01-01")
+    - end_date: ISO format date string (e.g., "2024-12-31")
+    """
+    try:
+        from datetime import datetime
+        start = datetime.fromisoformat(start_date)
+        end = datetime.fromisoformat(end_date)
+        return await get_customer_invoices_summary(start, end)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid date format. Use ISO format (YYYY-MM-DD): {str(e)}"
+        )
+
+@app.get("/supplier_invoices_summary", response_model=InvoiceSummaryResponse)
+async def get_supplier_invoices_summary_endpoint(
+    start_date: str,
+    end_date: str,
+):
+    """
+    Get aggregated supplier invoices data (amount, tax, total) between two dates.
+    
+    Query Parameters:
+    - start_date: ISO format date string (e.g., "2024-01-01")
+    - end_date: ISO format date string (e.g., "2024-12-31")
+    """
+    try:
+        from datetime import datetime
+        start = datetime.fromisoformat(start_date)
+        end = datetime.fromisoformat(end_date)
+        return await get_supplier_invoices_summary(start, end)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid date format. Use ISO format (YYYY-MM-DD): {str(e)}"
+        )
 
 @app.post("/extract-excel")
 async def extract_excel_data_endpoint(file: UploadFile = File(...)):
