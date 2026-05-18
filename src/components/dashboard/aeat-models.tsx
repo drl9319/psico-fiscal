@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Calculator, FileText, Info, Search, Save } from "lucide-react"
+import { Calculator, FileText, Info, Search, Save, Settings } from "lucide-react"
 
 import {
   Card,
@@ -155,6 +155,81 @@ export function AEATModels({ data }: AEATModelsProps) {
     }))
   }
 
+  const getQuarterDates = (year: string, quarter: string) => {
+    let startMonth, endMonth;
+    switch (quarter) {
+      case "01": // 1T
+      case "1T":
+        startMonth = 0;
+        endMonth = 2;
+        break;
+      case "02": // 2T
+      case "2T":
+        startMonth = 3;
+        endMonth = 5;
+        break;
+      case "03": // 3T
+      case "3T":
+        startMonth = 6;
+        endMonth = 8;
+        break;
+      case "04": // 4T
+      case "4T":
+        startMonth = 9;
+        endMonth = 11;
+        break;
+      default:
+        throw new Error("Periodo inválido. Use 01, 02, 03, 04 o 1T, 2T, 3T, 4T.");
+    }
+
+    const startDate = new Date(parseInt(year), startMonth, 1);
+    const endDate = new Date(parseInt(year), endMonth + 1, 0);
+    
+    return {
+      startDate: startDate.toISOString().split("T")[0],
+      endDate: endDate.toISOString().split("T")[0],
+    };
+  };
+
+  const handleCalcularModelo = async () => {
+    try {
+      setLoading(true)
+      setMessage(null)
+
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
+
+      const { startDate, endDate } = getQuarterDates(ejercicio, periodo);
+
+      const response = await fetch(
+        `${apiBaseUrl}/calculate_modelo_130?start_date=${startDate}&end_date=${endDate}`
+      )
+
+      if (!response.ok) {
+        throw new Error("Error al calcular la declaración")
+      }
+
+      const calculatedData = await response.json()
+
+      setCasillas({
+        casilla01: calculatedData.casilla01 || 0,
+        casilla02: calculatedData.casilla02 || 0,
+        casilla03: calculatedData.casilla03 || 0,
+        casilla04: calculatedData.casilla04 || 0,
+        casilla05: calculatedData.casilla05 || 0,
+        casilla06: calculatedData.casilla06 || 0,
+        casilla07: calculatedData.casilla07 || 0,
+        casilla19: calculatedData.casilla19 || 0,
+      })
+
+      setMessage({ type: "success", text: `Modelo 130 calculado para ${ejercicio} - ${periodo}` })
+    } catch (error) {
+      const errorText = error instanceof Error ? error.message : "Error al calcular"
+      setMessage({ type: "error", text: errorText })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <TooltipProvider>
       <div className="space-y-4">
@@ -231,6 +306,15 @@ export function AEATModels({ data }: AEATModelsProps) {
                   >
                     <Search className="mr-2 h-3.5 w-3.5" />
                     Consultar declaración
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleCalcularModelo}
+                    disabled={loading}
+                    className="flex-1"
+                  >
+                    <Settings className="mr-2 h-3.5 w-3.5" />
+                    Calcular modelo
                   </Button>
                   <Button
                     size="sm"

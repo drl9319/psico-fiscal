@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 from typing import List, Optional
 from decimal import Decimal
 from pydantic import BaseModel, Field
@@ -170,3 +171,47 @@ async def get_modelo_130(
         
     except Exception as e:
         raise ValueError(f"Error retrieving Modelo 130: {str(e)}") from e
+
+
+async def calculate_new_declaracion(
+    start_date: datetime,
+    end_date: datetime,
+) -> Modelo130Schema:
+    """
+    Calculates initial Modelo 130 values based on customer and supplier invoice summaries.
+    
+    Args:
+        start_date: Start date for the calculation period (inclusive)
+        end_date: End date for the calculation period (inclusive)
+    
+    Returns:
+        A Modelo130Schema object with casilla01 (customer total revenue) and
+        casilla02 (supplier total revenue) populated.
+    """
+    try:
+        logger = logging.getLogger("Entro en calculate_new_declaracion")
+        logger.info(f"Calculating new Modelo 130 for period: {start_date} to {end_date}")
+        customer_summary = await get_customer_invoices_summary(start_date, end_date)
+        supplier_summary = await get_supplier_invoices_summary(start_date, end_date)
+        
+        # Calculate casilla03 (Rendimiento Neto)
+        casilla03_value = customer_summary.total_revenue - supplier_summary.total_revenue
+        
+        # Calculate casilla04 (20% importe casilla 03)
+        casilla04_value = casilla03_value * Decimal('0.20')
+
+        # Initialize Modelo130Schema with calculated values
+        return Modelo130Schema(
+            ejercicio=str(start_date.year),
+            periodo=f"{start_date.month//3 + 1}T", # Example: 01,02,03 -> 1T
+            casilla01=customer_summary.total_revenue,
+            casilla02=supplier_summary.total_revenue,
+            casilla03=casilla03_value,
+            casilla04=casilla04_value,
+            casilla05=Decimal('0.00'), # Default
+            casilla06=Decimal('0.00'), # Default
+            casilla07=casilla04_value, # Default, can be adjusted
+            casilla19=Decimal('0.00'), # Default
+        )
+    except Exception as e:
+        raise ValueError(f"Error calculating new Modelo 130: {str(e)}") from e

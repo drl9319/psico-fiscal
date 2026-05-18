@@ -16,7 +16,7 @@ from .excel_extraction import extract_excel_data
 from .models.customer_invoices import CustomerInvoiceSchema
 from .models.modelo_130 import Modelo130Schema
 from .db_supabase_manager import SupabaseRepository
-from .aeat_models_calculate import get_customer_invoices_summary, get_supplier_invoices_summary, save_modelo_130, get_modelo_130, InvoiceSummaryResponse
+from .aeat_models_calculate import get_customer_invoices_summary, get_supplier_invoices_summary, save_modelo_130, get_modelo_130, calculate_new_declaracion, InvoiceSummaryResponse
 from pydantic import ValidationError
 
 app = FastAPI(title="Psico-Fiscal API")
@@ -252,6 +252,36 @@ async def get_modelo_130_endpoint(
     except Exception as e:
         logger.error(f"Error retrieving Modelo 130: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error retrieving Modelo 130: {str(e)}") from e
+
+
+@app.get("/calculate_modelo_130", response_model=Modelo130Schema)
+async def calculate_modelo_130_endpoint(
+    start_date: str,
+    end_date: str,
+):
+    """
+    Calculates a new Modelo 130 based on aggregated customer and supplier invoices
+    within the specified date range.
+    
+    Query Parameters:
+    - start_date: ISO format date string (e.g., "2024-01-01")
+    - end_date: ISO format date string (e.g., "2024-12-31")
+    """
+    try:
+        from datetime import datetime
+        start = datetime.fromisoformat(start_date)
+        end = datetime.fromisoformat(end_date)
+        print("Entro en calculate modelo_130_endpoint")
+        logger.info(f"Calculating new Modelo 130 for period endpoint: {start_date} to {end_date}")
+        return await calculate_new_declaracion(start, end)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid date format or calculation error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Error calculating new Modelo 130: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error calculating new Modelo 130: {str(e)}") from e
 
 @app.post("/extract-excel")
 async def extract_excel_data_endpoint(file: UploadFile = File(...)):
