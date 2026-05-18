@@ -2,20 +2,90 @@
 
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { DataTable } from "@/components/dashboard/data-table"
+import type { InvoiceRecord } from "@/components/dashboard/data-table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { supplierInvoices } from "@/lib/mock-data"
 import { Building2, Percent, Receipt, TrendingDown } from "lucide-react"
+import { useEffect, useState } from "react"
+
+interface BackendInvoice {
+  accounting_date: string
+  supplier_name: string
+  supplier_id: string
+  supplier_address: string
+  amount: number
+  tax: number
+  tax_percent: number
+  total: number
+  retencion: number
+  retencion_percent: number
+  invoice_number: string
+}
 
 export default function SuppliersPage() {
-  const totalExpenses = supplierInvoices.reduce(
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
+  const [invoices, setInvoices] = useState<InvoiceRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Transform backend response to frontend format
+  const transformInvoice = (supplierInvoice: BackendInvoice, index: number): InvoiceRecord => {
+    return {
+      id: supplierInvoice.supplier_id || `inv-${index}`,
+      accounting_date: new Date(supplierInvoice.accounting_date),
+      invoice_number: supplierInvoice.invoice_number || `INV-${index + 1}`,
+      supplier_name: supplierInvoice.supplier_name,
+      supplier_id: supplierInvoice.supplier_id,
+      supplier_address: supplierInvoice.supplier_address,
+      baseImponible: supplierInvoice.amount,
+      taxAmount: supplierInvoice.tax,
+      taxPercent: supplierInvoice.tax_percent || 0,
+      retencionAmount: supplierInvoice.retencion,
+      retencionPercent: supplierInvoice.retencion_percent || 0,
+      total: supplierInvoice.total,
+      category: "Otros",
+      fileName: "N/A",
+      status: "Validado",
+    }
+  }
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await fetch(`${apiBaseUrl}/get_supplier_invoices?limit=50`)
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
+      
+      const data: BackendInvoice[] = await response.json()
+      const transformedInvoices = data.map(transformInvoice)
+      setInvoices(transformedInvoices)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Error al cargar facturas"
+      setError(errorMessage)
+      console.error("Error fetching invoices:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchData()
+  }, [apiBaseUrl])
+
+  // Calculate stats from fetched data or mock data (fallback)
+  const dataSource = invoices.length > 0 ? invoices : supplierInvoices
+  const totalExpenses = dataSource.reduce(
     (sum, inv) => sum + inv.baseImponible,
     0
   )
-  const uniqueSuppliers = new Set(supplierInvoices.map((inv) => inv.entityName))
+  const uniqueSuppliers = new Set(dataSource.map((inv) => inv.supplier_name))
     .size
-  const totalInvoices = supplierInvoices.length
-  const totalIVADeductible = supplierInvoices.reduce(
-    (sum, inv) => sum + (inv.baseImponible * inv.ivaPercent) / 100,
+  const totalInvoices = dataSource.length
+  const totalIVADeductible = dataSource.reduce(
+    (sum, inv) => sum + inv.taxAmount,
     0
   )
 
@@ -63,6 +133,13 @@ export default function SuppliersPage() {
       description="Gestión de facturas recibidas y gastos deducibles"
     >
       <div className="space-y-6">
+        {error && (
+          <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+            <p className="font-semibold">Error al cargar datos:</p>
+            <p>{error}</p>
+          </div>
+        )}
+
         <div className="grid gap-4 md:grid-cols-4">
           {stats.map((stat) => (
             <Card key={stat.title}>
@@ -84,7 +161,13 @@ export default function SuppliersPage() {
             <CardTitle className="text-base">Registro de Gastos</CardTitle>
           </CardHeader>
           <CardContent>
-            <DataTable data={supplierInvoices} type="supplier" />
+            {loading ? (
+              <div className="flex h-48 items-center justify-center">
+                <p className="text-muted-foreground">Cargando facturas...</p>
+              </div>
+            ) : (
+              <DataTable data={dataSource} type="supplier" />
+            )}
           </CardContent>
         </Card>
       </div>
