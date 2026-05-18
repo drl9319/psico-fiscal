@@ -146,7 +146,7 @@ async def save_multiple_invoices_endpoint(invoices: List[InvoiceSchema]):
     return {"status": "success", "saved_count": len(saved_invoices), "data": saved_invoices}
 
 
-@app.get("/get_customer_invoices", response_model=List[InvoiceSchema])
+@app.get("/get_customer_invoices", response_model=List[CustomerInvoiceSchema])
 async def get_customer_invoices_endpoint(limit: int = 100):
     logger.error(f"Prueba comienzo a leer facturas, limit={limit}")
     repo = SupabaseRepository.get_instance()

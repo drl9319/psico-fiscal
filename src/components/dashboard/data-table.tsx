@@ -311,10 +311,17 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
                           handleInputChange(record.id, "accounting_date", new Date(e.target.value))
                         }
                       />
-                    ) : (
-                      format(record.accounting_date, "dd/MM/yy", { locale: es })
-                    )}
-                  </TableCell>
+                        ) : (
+                       (() => {
+                         if (!record.accounting_date) return "Sin fecha";
+                         const dateObj = new Date(record.accounting_date);
+                         if (!isNaN(dateObj.getTime())) {
+                           return format(dateObj, "dd/MM/yy", { locale: es });
+                         }
+                         return "Fecha inválida";
+                      })()
+                     )}
+                   </TableCell>
                   <TableCell className="font-mono text-sm">
                     {record._isEditing ? (
                       <Input
