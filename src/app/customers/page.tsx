@@ -15,8 +15,11 @@ interface BackendInvoice {
   customer_address: string;// Cambiado de customer_address
   amount: number;          // Cambiado de base
   tax: number;
+  tax_percent: number;
   total: number;
   retencion: number;
+  retencion_percent: number;
+  invoice_number: string;
 }
 
 export default function CustomersPage() {
@@ -30,14 +33,18 @@ export default function CustomersPage() {
     
     return {
       id: CustomerInvoiceSchema.customer_id || `inv-${index}`,
-      date: new Date(CustomerInvoiceSchema.accounting_date),
+      accounting_date: new Date(CustomerInvoiceSchema.accounting_date),
       invoice_number: CustomerInvoiceSchema.invoice_number || `INV-${index + 1}`,
-      entityName: CustomerInvoiceSchema.customer_name,
+      supplier_name: CustomerInvoiceSchema.customer_name,
       baseImponible: CustomerInvoiceSchema.amount,
-      ivaPercent: CustomerInvoiceSchema.tax > 0 ? 21 : 0,
-      irpfPercent: CustomerInvoiceSchema.retencion > 0 ? 15 : 0,
+      taxAmount: CustomerInvoiceSchema.tax,
+      taxPercent: CustomerInvoiceSchema.tax_percent || 0,
+      retencionAmount: CustomerInvoiceSchema.retencion,
+      retencionPercent: CustomerInvoiceSchema.retencion_percent || 0,
       total: CustomerInvoiceSchema.total,
       category: "Otros", // Ajustar si hay categorías específicas
+      fileName: "N/A", // Asignar un valor adecuado si está disponible
+      status: "Validado", // Asignar un valor adecuado si está disponible
     }
   }
 

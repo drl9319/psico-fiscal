@@ -22,6 +22,10 @@ interface AEATData {
     casilla01: number
     casilla02: number
     casilla03: number
+    casilla04: number
+    casilla05: number
+    casilla06: number
+    casilla07: number
   }
   modelo303: {
     sales: {
@@ -118,6 +122,52 @@ export function AEATModels({ data }: AEATModelsProps) {
                   </div>
                   <span className="font-mono text-sm font-bold text-primary">
                     {formatCurrency(data.modelo130.casilla03)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-xs font-semibold text-primary">
+                      04
+                    </span>
+                    <span className="text-sm">20% importe casilla 03</span>
+                  </div>
+                  <span className="font-mono text-sm font-medium">
+                    {formatCurrency(data.modelo130.casilla04)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-xs font-semibold text-primary">
+                      05
+                    </span>
+                    <span className="text-sm">De trimestres anteriores</span>
+                  </div>
+                  <span className="font-mono text-sm font-medium">
+                    {formatCurrency(data.modelo130.casilla05)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-xs font-semibold text-primary">
+                      06
+                    </span>
+                    <span className="text-sm">Retenciones e ingresos a cuenta</span>
+                  </div>
+                  <span className="font-mono text-sm font-medium">
+                    {formatCurrency(data.modelo130.casilla06)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-primary/5 px-3 py-2 border border-primary/20">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded bg-primary text-xs font-semibold text-primary-foreground">
+                      07
+                    </span>
+                    <span className="text-sm font-medium">
+                      Pago fraccionado previo
+                    </span>
+                  </div>
+                  <span className="font-mono text-sm font-bold text-primary">
+                    {formatCurrency(data.modelo130.casilla07)}
                   </span>
                 </div>
               </div>

@@ -53,9 +53,11 @@ export interface InvoiceRecord {
   supplier_name: string // Changed from 'entityName' to 'supplier_name'
   supplier_id: string | null // Added supplier_id
   supplier_address: string | null // Added supplier_address
-  amount: number // Changed from 'baseImponible' to 'amount'
-  taxPercent: number // Changed from 'ivaPercent' to 'taxPercent'
-  retencionPercent: number // Changed from 'irpfPercent' to 'retencionPercent'
+  baseImponible: number // Changed from 'amount' to 'baseImponible'
+  taxAmount: number // Changed from 'taxPercent' to 'taxAmount'
+  taxPercent: number // Kept taxPercent for display purposes
+  retencionAmount: number // Changed from 'retencionPercent' to 'retencionAmount'
+  retencionPercent: number // Kept retencionPercent for display purposes
   total: number
   category: string
   fileName: string // Added fileName
@@ -212,10 +214,12 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
   const summary = React.useMemo(() => {
     return filteredData.reduce(
       (acc, record) => ({
-        amount: acc.amount + record.amount,
+        baseImponible: acc.baseImponible + record.baseImponible,
+        taxAmount: acc.taxAmount + record.taxAmount,
+        retencionAmount: acc.retencionAmount + record.retencionAmount,
         total: acc.total + record.total,
       }),
-      { amount: 0, total: 0 }
+      { baseImponible: 0, taxAmount: 0, retencionAmount: 0, total: 0 }
     )
   }, [filteredData])
 
@@ -274,8 +278,8 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
               <TableHead className="w-[120px]">Nº Factura</TableHead>
               <TableHead>{type === "customer" ? "Cliente" : "Proveedor"}</TableHead>
               <TableHead className="text-right">Base Imponible</TableHead>
-              <TableHead className="text-center w-[80px]">IVA %</TableHead>
-              <TableHead className="text-center w-[80px]">IRPF %</TableHead>
+              <TableHead className="text-right w-[100px]">IVA</TableHead>
+              <TableHead className="text-right w-[100px]">IRPF</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead className="w-[120px]">Categoría</TableHead>
               <TableHead className="w-[100px] text-right">Acciones</TableHead>
@@ -350,46 +354,43 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
                     {record._isEditing ? (
                       <Input
                         type="number"
-                        value={record.amount}
+                        value={record.baseImponible}
                         onChange={(e) =>
-                          handleInputChange(record.id, "amount", parseFloat(e.target.value))
+                          handleInputChange(record.id, "baseImponible", parseFloat(e.target.value))
                         }
                       />
                     ) : (
-                      formatCurrency(record.amount)
+                      formatCurrency(record.baseImponible)
                     )}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-right font-mono">
                     {record._isEditing ? (
                       <Input
                         type="number"
-                        value={record.taxPercent}
+                        value={record.taxAmount}
                         onChange={(e) =>
-                          handleInputChange(record.id, "taxPercent", parseFloat(e.target.value))
+                          handleInputChange(record.id, "taxAmount", parseFloat(e.target.value))
                         }
                       />
                     ) : (
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {record.taxPercent}%
-                      </Badge>
+                      <span className="font-mono text-sm">
+                        {formatCurrency(record.taxAmount)}
+                      </span>
                     )}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-right font-mono">
                     {record._isEditing ? (
                       <Input
                         type="number"
-                        value={record.retencionPercent}
+                        value={record.retencionAmount}
                         onChange={(e) =>
-                          handleInputChange(record.id, "retencionPercent", parseFloat(e.target.value))
+                          handleInputChange(record.id, "retencionAmount", parseFloat(e.target.value))
                         }
                       />
                     ) : (
-                      <Badge
-                        variant="outline"
-                        className="font-mono text-xs text-destructive border-destructive/30"
-                      >
-                        {record.retencionPercent}%
-                      </Badge>
+                      <span className="font-mono text-sm text-destructive">
+                        {formatCurrency(record.retencionAmount)} ({record.retencionPercent}%)
+                      </span>
                     )}
                   </TableCell>
                   <TableCell className="text-right font-mono font-medium">
@@ -481,9 +482,21 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
               {filteredData.length} registros
             </span>
             <span>
-              <span className="text-muted-foreground">Base: </span>
+              <span className="text-muted-foreground">Base Imponible: </span>
               <span className="font-mono font-medium">
-                {formatCurrency(summary.amount)}
+                {formatCurrency(summary.baseImponible)}
+              </span>
+            </span>
+            <span>
+              <span className="text-muted-foreground">IVA: </span>
+              <span className="font-mono font-medium">
+                {formatCurrency(summary.taxAmount)}
+              </span>
+            </span>
+            <span>
+              <span className="text-muted-foreground">IRPF: </span>
+              <span className="font-mono font-medium text-destructive">
+                {formatCurrency(summary.retencionAmount)}
               </span>
             </span>
             <span>
