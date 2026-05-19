@@ -272,7 +272,7 @@ async def calculate_modelo_130_endpoint(
         start = datetime.fromisoformat(start_date)
         end = datetime.fromisoformat(end_date)
         print("Entro en calculate modelo_130_endpoint")
-        logger.info(f"Calculating new Modelo 130 for period endpoint: {start_date} to {end_date}")
+        print(f"Calculating new Modelo 130 for period endpoint: {start_date} to {end_date}")
         return await calculate_new_declaracion(start, end)
     except ValueError as e:
         raise HTTPException(

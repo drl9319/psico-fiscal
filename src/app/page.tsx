@@ -55,7 +55,7 @@ export default function DashboardPage() {
 
         <KPICards startDate={startDate} endDate={endDate} />
 
-        <AEATModels data={aeatData} />
+        <AEATModels data={aeatData} dateRange={dateRange} />
       </div>
     </DashboardLayout>
   )

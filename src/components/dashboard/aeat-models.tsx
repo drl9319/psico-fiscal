@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Calculator, FileText, Info, Search, Save, Settings } from "lucide-react"
 
 import {
@@ -46,9 +46,10 @@ interface AEATData {
 
 interface AEATModelsProps {
   data: AEATData
+  dateRange: DateRange | undefined
 }
 
-export function AEATModels({ data }: AEATModelsProps) {
+export function AEATModels({ data, dateRange }: AEATModelsProps) {
   const [ejercicio, setEjercicio] = useState("2026")
   const [periodo, setPeriodo] = useState("01")
   const [loading, setLoading] = useState(false)
@@ -65,6 +66,10 @@ export function AEATModels({ data }: AEATModelsProps) {
     casilla07: data.modelo130.casilla07,
     casilla19: data.modelo130.casilla19,
   })
+
+  useEffect(() => {
+    console.log("Updated casillas:", casillas);
+  }, [casillas]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-ES", {
@@ -98,6 +103,8 @@ export function AEATModels({ data }: AEATModelsProps) {
         casilla07: retrievedData.casilla07 || 0,
         casilla19: retrievedData.casilla19 || 0,
       })
+      
+      console.log("Updated casillas:", retrievedData);
       
       setMessage({ type: "success", text: `Declaración cargada para ${ejercicio} - ${periodo}` })
     } catch (error) {
@@ -193,12 +200,17 @@ export function AEATModels({ data }: AEATModelsProps) {
 
   const handleCalcularModelo = async () => {
     try {
-      setLoading(true)
-      setMessage(null)
+      setLoading(true);
+      setMessage(null);
 
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
-      const { startDate, endDate } = getQuarterDates(ejercicio, periodo);
+      const startDate = dateRange?.from ? dateRange.from.toISOString().split("T")[0] : undefined
+      const endDate = dateRange?.to ? dateRange.to.toISOString().split("T")[0] : undefined
+
+      if (!startDate || !endDate) {
+        throw new Error("Rango de fechas inválido.")
+      }
 
       const response = await fetch(
         `${apiBaseUrl}/calculate_modelo_130?start_date=${startDate}&end_date=${endDate}`
@@ -211,17 +223,19 @@ export function AEATModels({ data }: AEATModelsProps) {
       const calculatedData = await response.json()
 
       setCasillas({
-        casilla01: calculatedData.casilla01 || 0,
-        casilla02: calculatedData.casilla02 || 0,
-        casilla03: calculatedData.casilla03 || 0,
-        casilla04: calculatedData.casilla04 || 0,
-        casilla05: calculatedData.casilla05 || 0,
-        casilla06: calculatedData.casilla06 || 0,
-        casilla07: calculatedData.casilla07 || 0,
-        casilla19: calculatedData.casilla19 || 0,
-      })
+        casilla01: calculatedData.Casilla01 || 0,
+        casilla02: calculatedData.Casilla02 || 0,
+        casilla03: calculatedData.Casilla03 || 0,
+        casilla04: calculatedData.Casilla04 || 0,
+        casilla05: calculatedData.Casilla05 || 0,
+        casilla06: calculatedData.Casilla06 || 0,
+        casilla07: calculatedData.Casilla07 || 0,
+        casilla19: calculatedData.Casilla19 || 0,
+      });
 
-      setMessage({ type: "success", text: `Modelo 130 calculado para ${ejercicio} - ${periodo}` })
+      console.log("Updated casillas:", calculatedData);
+
+      setMessage({ type: "success", text: `Modelo 130 calculado para el rango seleccionado.` })
     } catch (error) {
       const errorText = error instanceof Error ? error.message : "Error al calcular"
       setMessage({ type: "error", text: errorText })

@@ -9,14 +9,14 @@ class Modelo130Schema(BaseModel):
     
     ejercicio: str = Field(..., max_length=4)
     periodo: str = Field(..., max_length=4)
-    Casilla01: Decimal = Field(default=Decimal('0.00'), ge=0)
-    Casilla02: Decimal = Field(default=Decimal('0.00'), ge=0)
-    Casilla03: Decimal = Field(default=Decimal('0.00'), ge=0)
-    Casilla04: Decimal = Field(default=Decimal('0.00'), ge=0)
-    Casilla05: Decimal = Field(default=Decimal('0.00'), ge=0)
-    Casilla06: Decimal = Field(default=Decimal('0.00'), ge=0)
-    Casilla07: Decimal = Field(default=Decimal('0.00'), ge=0)
-    Casilla19: Decimal = Field(default=Decimal('0.00'), ge=0)
+    Casilla01: Decimal = Field(default=Decimal('0.00'))
+    Casilla02: Decimal = Field(default=Decimal('0.00'))
+    Casilla03: Decimal = Field(default=Decimal('0.00'))
+    Casilla04: Decimal = Field(default=Decimal('0.00'))
+    Casilla05: Decimal = Field(default=Decimal('0.00'))
+    Casilla06: Decimal = Field(default=Decimal('0.00'))
+    Casilla07: Decimal = Field(default=Decimal('0.00'))
+    Casilla19: Decimal = Field(default=Decimal('0.00'))
 
     class Config:
         # Esto permite que Pydantic maneje objetos de BD si lo necesitas
