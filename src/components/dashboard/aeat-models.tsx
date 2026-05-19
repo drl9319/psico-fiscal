@@ -47,11 +47,24 @@ interface AEATData {
 interface AEATModelsProps {
   data: AEATData
   dateRange: DateRange | undefined
+  year: number
+  quarter: string
 }
 
-export function AEATModels({ data, dateRange }: AEATModelsProps) {
-  const [ejercicio, setEjercicio] = useState("2026")
-  const [periodo, setPeriodo] = useState("01")
+export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps & { year: number; quarter: string }) {
+  //const [ejercicio, setEjercicio] = useState(year.toString())
+  const [ejercicio, setEjercicio] = useState(year ? year.toString() : new Date().getFullYear().toString())
+  const [periodo, setPeriodo] = useState(quarter)
+
+   useEffect(() => {
+     if (year !== undefined && year !== null) {
+       setEjercicio(year.toString())
+     }
+     if (quarter) {
+        setPeriodo(quarter)
+      }
+     }, [year, quarter])
+
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   
