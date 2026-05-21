@@ -11,6 +11,7 @@ export const customerInvoices: InvoiceRecord[] = [
     irpfPercent: 15,
     total: 68.0,
     category: "Sanitario",
+    nif: "12345678A", // Added NIF field
   },
   {
     id: "2",
@@ -22,6 +23,7 @@ export const customerInvoices: InvoiceRecord[] = [
     irpfPercent: 15,
     total: 136.0,
     category: "Sanitario",
+    nif: "12345678B", // Added NIF field
   },
   {
     id: "3",
@@ -33,6 +35,7 @@ export const customerInvoices: InvoiceRecord[] = [
     irpfPercent: 15,
     total: 68.0,
     category: "Sanitario",
+    nif: "12345678C", // Added NIF field
   },
   {
     id: "4",
@@ -44,6 +47,7 @@ export const customerInvoices: InvoiceRecord[] = [
     irpfPercent: 15,
     total: 530.0,
     category: "Formación",
+    nif: "12345678D", // Added NIF field
   },
   {
     id: "5",
@@ -55,6 +59,7 @@ export const customerInvoices: InvoiceRecord[] = [
     irpfPercent: 15,
     total: 204.0,
     category: "Sanitario",
+    nif: "12345678E", // Added NIF field
   },
   {
     id: "6",
@@ -66,6 +71,7 @@ export const customerInvoices: InvoiceRecord[] = [
     irpfPercent: 15,
     total: 68.0,
     category: "Sanitario",
+    nif: "12345678F", // Added NIF field
   },
   {
     id: "7",
@@ -77,6 +83,7 @@ export const customerInvoices: InvoiceRecord[] = [
     irpfPercent: 15,
     total: 848.0,
     category: "Formación",
+    nif: "12345678G", // Added NIF field
   },
   {
     id: "8",
@@ -88,6 +95,7 @@ export const customerInvoices: InvoiceRecord[] = [
     irpfPercent: 15,
     total: 136.0,
     category: "Sanitario",
+    nif: "12345678H", // Added NIF field
   },
   {
     id: "9",
@@ -99,6 +107,7 @@ export const customerInvoices: InvoiceRecord[] = [
     irpfPercent: 15,
     total: 272.0,
     category: "Sanitario",
+    nif: "12345678I", // Added NIF field
   },
   {
     id: "10",
@@ -110,6 +119,7 @@ export const customerInvoices: InvoiceRecord[] = [
     irpfPercent: 15,
     total: 1272.0,
     category: "Formación",
+    nif: "12345678J", // Added NIF field
   },
   {
     id: "11",
@@ -121,6 +131,7 @@ export const customerInvoices: InvoiceRecord[] = [
     irpfPercent: 15,
     total: 68.0,
     category: "Sanitario",
+    nif: "12345678K", // Added NIF field
   },
   {
     id: "12",
@@ -132,6 +143,7 @@ export const customerInvoices: InvoiceRecord[] = [
     irpfPercent: 15,
     total: 136.0,
     category: "Sanitario",
+    nif: "12345678L", // Added NIF field
   },
 ]
 

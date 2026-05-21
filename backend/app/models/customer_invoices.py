@@ -18,6 +18,7 @@ class CustomerInvoiceSchema(BaseModel):
     tax: Decimal = Field(ge=0)
     total: Decimal = Field(ge=0)
     retencion: Decimal = Field(default=Decimal('0.00'), ge=0)
+    nif: Optional[str] = Field(None, max_length=20)
     
 
     class Config:

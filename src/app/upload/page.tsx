@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Shield, Sparkles, Zap } from "lucide-react"
 import { DataTable, InvoiceRecord } from "@/components/dashboard/data-table"
+import { DataTableExcel } from "@/components/dashboard/data-table-excel"
 import { Button } from "@/components/ui/button"
 
 export default function UploadPage() {
@@ -175,7 +176,7 @@ export default function UploadPage() {
               <CardTitle className="text-base font-medium">Contenido del Excel</CardTitle>
             </CardHeader>
             <CardContent>
-              <DataTable
+              <DataTableExcel
                 data={extractedExcelData}
                 type="customer"
                 onDataChange={setExtractedExcelData}

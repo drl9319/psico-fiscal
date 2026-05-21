@@ -53,11 +53,9 @@ export interface InvoiceRecord {
   supplier_name: string // Changed from 'entityName' to 'supplier_name'
   supplier_id: string | null // Added supplier_id
   supplier_address: string | null // Added supplier_address
-  baseImponible: number // Changed from 'amount' to 'baseImponible'
-  taxAmount: number // Changed from 'taxPercent' to 'taxAmount'
-  taxPercent: number // Kept taxPercent for display purposes
-  retencionAmount: number // Changed from 'retencionPercent' to 'retencionAmount'
-  retencionPercent: number // Kept retencionPercent for display purposes
+  subtotal: number // Corresponds to Base Imponible
+  tax_base_zero: number // Corresponds to BI 0%
+  tax_amount_zero: number // Corresponds to Imp. 0%
   total: number
   category: string
   fileName: string // Added fileName
@@ -98,7 +96,7 @@ const categoryColors: Record<string, string> = {
   Otros: "bg-muted text-muted-foreground",
 }
 
-export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTableProps) {
+export function DataTableExcel({ data, type, onDataChange, onSelectedChange }: DataTableProps) {
   const [searchTerm, setSearchTerm] = React.useState("")
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>()
   const [categoryFilter, setCategoryFilter] = React.useState<string>("all")
@@ -132,7 +130,7 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
       const matchesDateRange =
         !dateRange?.from ||
         !dateRange?.to ||
-        (record.date >= dateRange.from && record.date <= dateRange.to)
+        (record.accounting_date >= dateRange.from && record.accounting_date <= dateRange.to)
 
       const matchesCategory =
         categoryFilter === "all" || record.category === categoryFilter
@@ -215,12 +213,12 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
   const summary = React.useMemo(() => {
     return filteredData.reduce(
       (acc, record) => ({
-        baseImponible: acc.baseImponible + record.baseImponible,
-        taxAmount: acc.taxAmount + record.taxAmount,
-        retencionAmount: acc.retencionAmount + record.retencionAmount,
+        subtotal: acc.subtotal + record.subtotal,
+        tax_base_zero: acc.tax_base_zero + record.tax_base_zero,
+        tax_amount_zero: acc.tax_amount_zero + record.tax_amount_zero,
         total: acc.total + record.total,
       }),
-      { baseImponible: 0, taxAmount: 0, retencionAmount: 0, total: 0 }
+      { subtotal: 0, tax_base_zero: 0, tax_amount_zero: 0, total: 0 }
     )
   }, [filteredData])
 
@@ -278,10 +276,10 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
               <TableHead className="w-[100px]">Fecha Contable</TableHead>
               <TableHead className="w-[120px]">Nº Factura</TableHead>
               <TableHead>{type === "customer" ? "Cliente" : "Proveedor"}</TableHead>
-              <TableHead>NIF</TableHead>
-              <TableHead className="text-right">Base Imponible</TableHead>
-              <TableHead className="text-right w-[100px]">IVA</TableHead>
-              <TableHead className="text-right w-[100px]">IRPF</TableHead>
+              <TableHead>NIF Cliente</TableHead>
+              <TableHead className="text-right">Subtotal</TableHead>
+              <TableHead className="text-right w-[100px]">BI 0%</TableHead>
+              <TableHead className="text-right w-[100px]">Imp. 0%</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead className="w-[120px]">Categoría</TableHead>
               <TableHead className="w-[100px] text-right">Acciones</TableHead>
@@ -291,7 +289,7 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
             {paginatedData.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={10}
+                  colSpan={11}
                   className="h-24 text-center text-muted-foreground"
                 >
                   No se encontraron registros
@@ -369,27 +367,27 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
                     {record._isEditing ? (
                       <Input
                         type="number"
-                        value={record.baseImponible}
+                        value={record.subtotal}
                         onChange={(e) =>
-                          handleInputChange(record.id, "baseImponible", parseFloat(e.target.value))
+                          handleInputChange(record.id, "subtotal", parseFloat(e.target.value))
                         }
                       />
                     ) : (
-                      formatCurrency(record.baseImponible)
+                      formatCurrency(record.subtotal)
                     )}
                   </TableCell>
                   <TableCell className="text-right font-mono">
                     {record._isEditing ? (
                       <Input
                         type="number"
-                        value={record.taxAmount}
+                        value={record.tax_base_zero}
                         onChange={(e) =>
-                          handleInputChange(record.id, "taxAmount", parseFloat(e.target.value))
+                          handleInputChange(record.id, "tax_base_zero", parseFloat(e.target.value))
                         }
                       />
                     ) : (
                       <span className="font-mono text-sm">
-                        {formatCurrency(record.taxAmount)}
+                        {formatCurrency(record.tax_base_zero)}
                       </span>
                     )}
                   </TableCell>
@@ -397,14 +395,14 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
                     {record._isEditing ? (
                       <Input
                         type="number"
-                        value={record.retencionAmount}
+                        value={record.tax_amount_zero}
                         onChange={(e) =>
-                          handleInputChange(record.id, "retencionAmount", parseFloat(e.target.value))
+                          handleInputChange(record.id, "tax_amount_zero", parseFloat(e.target.value))
                         }
                       />
                     ) : (
-                      <span className="font-mono text-sm text-destructive">
-                        {formatCurrency(record.retencionAmount)} ({record.retencionPercent}%)
+                      <span className="font-mono text-sm">
+                        {formatCurrency(record.tax_amount_zero)}
                       </span>
                     )}
                   </TableCell>
@@ -497,21 +495,21 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
               {filteredData.length} registros
             </span>
             <span>
-              <span className="text-muted-foreground">Base Imponible: </span>
+              <span className="text-muted-foreground">Subtotal: </span>
               <span className="font-mono font-medium">
-                {formatCurrency(summary.baseImponible)}
+                {formatCurrency(summary.subtotal)}
               </span>
             </span>
             <span>
-              <span className="text-muted-foreground">IVA: </span>
+              <span className="text-muted-foreground">BI 0%: </span>
               <span className="font-mono font-medium">
-                {formatCurrency(summary.taxAmount)}
+                {formatCurrency(summary.tax_base_zero)}
               </span>
             </span>
             <span>
-              <span className="text-muted-foreground">IRPF: </span>
-              <span className="font-mono font-medium text-destructive">
-                {formatCurrency(summary.retencionAmount)}
+              <span className="text-muted-foreground">Imp. 0%: </span>
+              <span className="font-mono font-medium">
+                {formatCurrency(summary.tax_amount_zero)}
               </span>
             </span>
             <span>
@@ -570,4 +568,3 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
     </div>
   )
 }
-

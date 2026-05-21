@@ -16,6 +16,8 @@ export type ExtractedInvoice = InvoiceRecord & {
   fileName: string
   status: 'pending' | 'extracting' | 'extracted' | 'error'
   errorMessage?: string
+  tax_amount_zero?: number
+  customer_id?: string
 }
 
 interface UploadZoneProps {
@@ -101,17 +103,19 @@ export function UploadZone({
             accounting_date: item.accounting_date ? new Date(item.accounting_date) : new Date(),
             invoice_number: item.invoice_number || 'N/A',
             supplier_name: item.supplier_name || item.customer_name || 'Desconocido',
-            supplier_id: item.supplier_id || 'N/A',
+            supplier_id: item.supplier_id || item.customer_id || 'N/A',
             supplier_address: item.supplier_address || 'N/A',
             amount: Number(item.amount || 0),
             taxPercent: Number(item.taxPercent || 0),
             retencionPercent: Number(item.retencionPercent || 0),
             total: Number(item.total || 0),
             category: item.category || "Otros",
+            customer_id: item.customer_id || 'N/A',
             // Campos adicionales que mencionaste del Excel
             subtotal: item.subtotal,
             subtotal_discounted: item.subtotal_discounted,
             tax_base_zero: item.tax_base_zero,
+            tax_amount_zero: item.tax_amount_zero,
           }
           allResults.push(record)
         })

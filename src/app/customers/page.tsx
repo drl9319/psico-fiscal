@@ -45,6 +45,7 @@ export default function CustomersPage() {
       category: "Otros", // Ajustar si hay categorías específicas
       fileName: "N/A", // Asignar un valor adecuado si está disponible
       status: "Validado", // Asignar un valor adecuado si está disponible
+      customer_id: CustomerInvoiceSchema.customer_id || "N/A",
     }
   }
 

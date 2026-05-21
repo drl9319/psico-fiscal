@@ -21,7 +21,9 @@ def extract_excel_data(file_path: str):
         'Subtotal',
         'Subtotal con dto.',
         'BI 0%',
-        'Total factura'
+        'Imp. 0%',
+        'Total factura',
+        'NIF cliente'
     ]].copy()
 
     df_filtered.rename(columns={
@@ -31,8 +33,14 @@ def extract_excel_data(file_path: str):
         'Subtotal': 'subtotal',
         'Subtotal con dto.': 'subtotal_discounted',
         'BI 0%': 'tax_base_zero',
-        'Total factura': 'total'
+        'Imp. 0%': 'tax_amount_zero',
+        'Total factura': 'total',
+        'NIF cliente': 'customer_id'
     }, inplace=True)
+
+    # Data masking for confidentiality
+    df_filtered['customer_name'] = df_filtered['customer_name'].str.split().str.get(0)
+    df_filtered['customer_id'] = df_filtered['customer_id'].astype(str).str[-4:]
 
     # Convert 'Fecha' to ISO format
     df_filtered['accounting_date'] = pd.to_datetime(df_filtered['accounting_date']).dt.date.astype(str)
