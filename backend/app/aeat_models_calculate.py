@@ -118,25 +118,53 @@ async def get_supplier_invoices_summary(
         raise ValueError(f"Error calculating supplier invoices summary: {str(e)}") from e
 
 
+from decimal import Decimal
+
+from decimal import Decimal
+
 async def save_modelo_130(
     modelo_130: Modelo130Schema,
 ) -> dict:
     """
-    Saves Modelo 130 data to Supabase database.
-    
+    Saves or updates Modelo 130 data in the Supabase database.
+
     Args:
         modelo_130: Modelo130Schema object with tax form data
-    
+
     Returns:
-        Dictionary with the created record or error information
+        Dictionary with the created/updated record or error information
     """
     try:
         repo = SupabaseRepository.get_instance()
-        
-        # Use repository create method - passes the Pydantic model directly
-        created_record = await repo.create("modelo130_presentaciones", modelo_130)
-        return {"status": "success", "data": created_record}
-        
+
+        # 1. Extraemos los campos del modelo en un diccionario para limpiarlos
+        # Nota: Si usas Pydantic v1 usa modelo_130.dict(), si usas v2 usa .model_dump()
+        datos_limpios = modelo_130.model_dump() if hasattr(modelo_130, 'model_dump') else modelo_130.dict()
+
+        # 2. Convertimos todos los objetos Decimal a float
+        for clave, valor in datos_limpios.items():
+            if isinstance(valor, Decimal):
+                datos_limpios[clave] = float(valor)
+
+        # Check if a record with the same ejercicio and periodo exists
+        existing_records = await repo.get_all("modelo130_presentaciones", limit=1000)
+        for record in existing_records:
+            if record.get("ejercicio") == modelo_130.ejercicio and record.get("periodo") == modelo_130.periodo:
+                # El método update sí suele esperar un diccionario plano (dict)
+                updated_record = await repo.update(
+                    "modelo130_presentaciones",
+                    record["id"],  
+                    datos_limpios
+                )
+                return {"status": "success", "data": updated_record, "action": "updated"}
+
+        # 3. Para el create, creamos una copia del OBJETO de Pydantic con los floats inyectados
+        # Esto soluciona el error porque el repositorio recibirá el objeto esperado con .model_dump
+        modelo_con_floats = modelo_130.model_copy(update=datos_limpios) if hasattr(modelo_130, 'model_copy') else modelo_130.copy(update=datos_limpios)
+
+        created_record = await repo.create("modelo130_presentaciones", modelo_con_floats)
+        return {"status": "success", "data": created_record, "action": "created"}
+
     except Exception as e:
         raise ValueError(f"Error saving Modelo 130: {str(e)}") from e
 
@@ -150,7 +178,7 @@ async def get_modelo_130(
     
     Args:
         ejercicio: Year as string (e.g., "2024")
-        periodo: Period as string (e.g., "01", "02", etc.)
+        periodo: Period as string (e.g., "Q1", "Q2", etc.)
     
     Returns:
         Modelo130Schema object if found, None otherwise
@@ -162,9 +190,11 @@ async def get_modelo_130(
         # Note: For better performance with large datasets, consider adding
         # a filtered query method to the repository
         all_records = await repo.get_all("modelo130_presentaciones", limit=1000)
-        
+        print(f"Retrieved {len(all_records)} records from modelo130_presentaciones")
+        print(f"Looking for record with ejercicio={ejercicio} and periodo={periodo}")
         for record in all_records:
             if record.get("ejercicio") == ejercicio and record.get("periodo") == periodo:
+                print(f"Found matching record: {record}")
                 return Modelo130Schema(**record)
         
         return None
@@ -179,11 +209,11 @@ async def calculate_new_declaracion(
 ) -> Modelo130Schema:
     """
     Calculates initial Modelo 130 values based on customer and supplier invoice summaries.
-    
+
     Args:
         start_date: Start date for the calculation period (inclusive)
         end_date: End date for the calculation period (inclusive)
-    
+
     Returns:
         A Modelo130Schema object with casilla01 (customer total revenue) and
         casilla02 (supplier total revenue) populated.
@@ -193,11 +223,28 @@ async def calculate_new_declaracion(
         print(f"Calculating new Modelo 130 for period: {start_date} to {end_date}")
         customer_summary = await get_customer_invoices_summary(start_date, end_date)
         supplier_summary = await get_supplier_invoices_summary(start_date, end_date)
-        
+
+        # Determine the quarter of the declaration
+        current_quarter = start_date.month // 3 + 1
+
+        # Initialize values for Casilla01 and Casilla02
+        casilla01_value = customer_summary.total_revenue
+        casilla02_value = supplier_summary.total_revenue
+
+        # If not the first quarter, retrieve the last quarter's data
+        if current_quarter > 1:
+            previous_quarter = current_quarter - 1
+            ejercicio = str(start_date.year)
+            periodo = f"Q{previous_quarter}"
+
+            last_quarter_data = await get_modelo_130(ejercicio, periodo)
+
+            if last_quarter_data:
+                casilla01_value += last_quarter_data.Casilla01
+                casilla02_value += last_quarter_data.Casilla02
+
         # Calculate casilla03 (Rendimiento Neto)
-        casilla03_value = customer_summary.total_revenue - supplier_summary.total_revenue
-        print(f"prueba valor de customer_summary.total_revenue: {customer_summary.total_revenue}")
-        print(f"prueba valor de supplier_summary.total_revenue: {supplier_summary.total_revenue}")
+        casilla03_value = casilla01_value - casilla02_value
 
         # Calculate casilla04 (20% importe casilla 03)
         casilla04_value = casilla03_value * Decimal('0.20')
@@ -205,9 +252,9 @@ async def calculate_new_declaracion(
         # Initialize Modelo130Schema with calculated values
         return Modelo130Schema(
             ejercicio=str(start_date.year),
-            periodo=f"{start_date.month//3 + 1}T", # Example: 01,02,03 -> 1T
-            Casilla01=customer_summary.total_revenue,
-            Casilla02=supplier_summary.total_revenue,
+            periodo=f"{current_quarter}T", # Example: 01,02,03 -> 1T
+            Casilla01=casilla01_value,
+            Casilla02=casilla02_value,
             Casilla03=casilla03_value,
             Casilla04=casilla04_value,
             Casilla05=Decimal('0.00'), # Default

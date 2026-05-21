@@ -107,14 +107,14 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
       
       // Update form with retrieved data
       setCasillas({
-        casilla01: retrievedData.casilla01 || 0,
-        casilla02: retrievedData.casilla02 || 0,
-        casilla03: retrievedData.casilla03 || 0,
-        casilla04: retrievedData.casilla04 || 0,
-        casilla05: retrievedData.casilla05 || 0,
-        casilla06: retrievedData.casilla06 || 0,
-        casilla07: retrievedData.casilla07 || 0,
-        casilla19: retrievedData.casilla19 || 0,
+        casilla01: retrievedData.Casilla01 || 0,
+        casilla02: retrievedData.Casilla02 || 0,
+        casilla03: retrievedData.Casilla03 || 0,
+        casilla04: retrievedData.Casilla04 || 0,
+        casilla05: retrievedData.Casilla05 || 0,
+        casilla06: retrievedData.Casilla06 || 0,
+        casilla07: retrievedData.Casilla07 || 0,
+        casilla19: retrievedData.Casilla19 || 0,
       })
       
       console.log("Updated casillas:", retrievedData);
@@ -138,14 +138,14 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
       const payload = {
         ejercicio,
         periodo,
-        casilla01: casillas.casilla01,
-        casilla02: casillas.casilla02,
-        casilla03: casillas.casilla03,
-        casilla04: casillas.casilla04,
-        casilla05: casillas.casilla05,
-        casilla06: casillas.casilla06,
-        casilla07: casillas.casilla07,
-        casilla19: casillas.casilla19,
+        Casilla01: casillas.casilla01,
+        Casilla02: casillas.casilla02,
+        Casilla03: casillas.casilla03,
+        Casilla04: casillas.casilla04,
+        Casilla05: casillas.casilla05,
+        Casilla06: casillas.casilla06,
+        Casilla07: casillas.casilla07,
+        Casilla19: casillas.casilla19,
       }
       
       const response = await fetch(`${apiBaseUrl}/save_modelo_130`, {
