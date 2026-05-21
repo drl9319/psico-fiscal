@@ -63,7 +63,19 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
      if (quarter) {
         setPeriodo(quarter)
       }
-     }, [year, quarter])
+
+     // Reset modelo 130 data to 0 when year or quarter changes
+     setCasillas({
+       casilla01: 0,
+       casilla02: 0,
+       casilla03: 0,
+       casilla04: 0,
+       casilla05: 0,
+       casilla06: 0,
+       casilla07: 0,
+       casilla19: 0,
+     });
+   }, [year, quarter])
 
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
