@@ -103,6 +103,7 @@ export function DataTableExcel({ data, type, onDataChange, onSelectedChange }: D
   const [currentPage, setCurrentPage] = React.useState(1)
   const [editedData, setEditedData] = React.useState<InvoiceRecord[]>(data)
   const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set())
+  const [isSaving, setIsSaving] = React.useState(false)
   const itemsPerPage = 10
 
   React.useEffect(() => {
@@ -119,6 +120,46 @@ export function DataTableExcel({ data, type, onDataChange, onSelectedChange }: D
       currency: "EUR",
     }).format(amount)
   }
+
+  const handleSaveToDb = async () => {
+    setIsSaving(true);
+    const selectedData = editedData.filter(record => selectedRows.has(record.id));
+
+    const invoicesToSave = selectedData.map(record => ({
+      accounting_date: format(record.accounting_date, "yyyy-MM-dd"),
+      customer_name: record.supplier_name,
+      customer_address: record.supplier_address,
+      customer_id: record.customer_id,
+      invoice_number: record.invoice_number,
+      amount: record.subtotal,
+      tax: record.total - record.subtotal,
+      total: record.total,
+      retencion: 0, 
+    }));
+
+    try {
+      const response = await fetch("http://localhost:8000/save-multiple-customer-invoices", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(invoicesToSave),
+      });
+
+      if (response.ok) {
+        alert("Facturas guardadas correctamente.");
+        setSelectedRows(new Set());
+      } else {
+        const errorData = await response.json();
+        alert(`Error al guardar las facturas: ${errorData.detail?.message || JSON.stringify(errorData.detail)}`);
+      }
+    } catch (error) {
+      console.error("Error saving invoices:", error);
+      alert("Ocurrió un error de red al intentar guardar las facturas.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const filteredData = React.useMemo(() => {
     return editedData.filter((record) => {
@@ -259,6 +300,15 @@ export function DataTableExcel({ data, type, onDataChange, onSelectedChange }: D
         <Button variant="outline" size="icon">
           <Download className="h-4 w-4" />
         </Button>
+
+        {type === "customer" && (
+          <Button
+            onClick={handleSaveToDb}
+            disabled={selectedRows.size === 0 || isSaving}
+          >
+            {isSaving ? "Guardando..." : "Guardar en BBDD"}
+          </Button>
+        )}
       </div>
 
       <div className="rounded-lg border bg-card">
@@ -315,17 +365,17 @@ export function DataTableExcel({ data, type, onDataChange, onSelectedChange }: D
                           handleInputChange(record.id, "accounting_date", new Date(e.target.value))
                         }
                       />
-                        ) : (
-                       (() => {
-                         if (!record.accounting_date) return "Sin fecha";
-                         const dateObj = new Date(record.accounting_date);
-                         if (!isNaN(dateObj.getTime())) {
-                           return format(dateObj, "dd/MM/yy", { locale: es });
-                         }
-                         return "Fecha inválida";
+                    ) : (
+                      (() => {
+                        if (!record.accounting_date) return "Sin fecha";
+                        const dateObj = new Date(record.accounting_date);
+                        if (!isNaN(dateObj.getTime())) {
+                          return format(dateObj, "dd/MM/yy", { locale: es });
+                        }
+                        return "Fecha inválida";
                       })()
-                     )}
-                   </TableCell>
+                    )}
+                  </TableCell>
                   <TableCell className="font-mono text-sm">
                     {record._isEditing ? (
                       <Input
