@@ -129,10 +129,13 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
         record.supplier_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         record.invoice_number.toLowerCase().includes(searchTerm.toLowerCase())
 
+      // Normalize record date to a Date object for comparison
+      const recordDate = record.accounting_date ? new Date(record.accounting_date) : null
+
       const matchesDateRange =
         !dateRange?.from ||
         !dateRange?.to ||
-        (record.date >= dateRange.from && record.date <= dateRange.to)
+        (recordDate instanceof Date && !isNaN(recordDate.getTime()) && recordDate >= dateRange.from! && recordDate <= dateRange.to!)
 
       const matchesCategory =
         categoryFilter === "all" || record.category === categoryFilter
@@ -215,10 +218,10 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
   const summary = React.useMemo(() => {
     return filteredData.reduce(
       (acc, record) => ({
-        baseImponible: acc.baseImponible + record.baseImponible,
-        taxAmount: acc.taxAmount + record.taxAmount,
-        retencionAmount: acc.retencionAmount + record.retencionAmount,
-        total: acc.total + record.total,
+        baseImponible: acc.baseImponible + Number(record.baseImponible || 0),
+        taxAmount: acc.taxAmount + Number(record.taxAmount || 0),
+        retencionAmount: acc.retencionAmount + Number(record.retencionAmount || 0),
+        total: acc.total + Number(record.total || 0),
       }),
       { baseImponible: 0, taxAmount: 0, retencionAmount: 0, total: 0 }
     )
@@ -298,8 +301,8 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedData.map((record) => (
-                <TableRow key={record.id} className={record._isValid === false ? "bg-destructive/5" : undefined}>
+              paginatedData.map((record, idx) => (
+                <TableRow key={`${record.id ?? idx}-${record.invoice_number}`} className={record._isValid === false ? "bg-destructive/5" : undefined}>
                   <TableCell>
                     <input
                       type="checkbox"

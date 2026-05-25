@@ -6,7 +6,7 @@ import { UploadZone, ExtractedInvoice } from "@/components/dashboard/upload-zone
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Shield, Sparkles, Zap } from "lucide-react"
-import { DataTable, InvoiceRecord } from "@/components/dashboard/data-table"
+import { DataTableInvoiceExtraction, InvoiceRecord } from "@/components/dashboard/data-table-invoice-extraction"
 import { DataTableExcel } from "@/components/dashboard/data-table-excel"
 import { Button } from "@/components/ui/button"
 
@@ -160,7 +160,7 @@ export default function UploadPage() {
                   Todas las facturas guardadas correctamente en la base de datos.
                 </div>
               )}
-              <DataTable
+              <DataTableInvoiceExtraction
                 data={allExtractedInvoices}
                 type="supplier"
                 onDataChange={setAllExtractedInvoices}

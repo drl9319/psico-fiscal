@@ -31,7 +31,7 @@ export default function SuppliersPage() {
   // Transform backend response to frontend format
   const transformInvoice = (supplierInvoice: BackendInvoice, index: number): InvoiceRecord => {
     return {
-      id: supplierInvoice.supplier_id || `inv-${index}`,
+      id: supplierInvoice.id || `inv-${index}`,
       accounting_date: new Date(supplierInvoice.accounting_date),
       invoice_number: supplierInvoice.invoice_number || `INV-${index + 1}`,
       supplier_name: supplierInvoice.supplier_name,
@@ -77,15 +77,19 @@ export default function SuppliersPage() {
 
   // Calculate stats from fetched data or mock data (fallback)
   const dataSource = invoices.length > 0 ? invoices : supplierInvoices
+
+  const toNumber = (v: unknown) =>
+    typeof v === "number" ? v : Number(String(v ?? "0").replace(",", ".")) || 0
   const totalExpenses = dataSource.reduce(
-    (sum, inv) => sum + inv.baseImponible,
+    (sum, inv) => sum + toNumber((inv as any).baseImponible),
     0
   )
+
   const uniqueSuppliers = new Set(dataSource.map((inv) => inv.supplier_name))
     .size
   const totalInvoices = dataSource.length
   const totalIVADeductible = dataSource.reduce(
-    (sum, inv) => sum + inv.taxAmount,
+    (sum, inv) => sum + toNumber((inv as any).taxAmount),
     0
   )
 

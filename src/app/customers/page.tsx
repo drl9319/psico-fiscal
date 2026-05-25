@@ -32,7 +32,7 @@ export default function CustomersPage() {
   const transformInvoice = (CustomerInvoiceSchema: BackendInvoice, index: number): InvoiceRecord => {
     
     return {
-      id: CustomerInvoiceSchema.customer_id || `inv-${index}`,
+      id: CustomerInvoiceSchema.id || `inv-${index}`,
       accounting_date: new Date(CustomerInvoiceSchema.accounting_date),
       invoice_number: CustomerInvoiceSchema.invoice_number || `INV-${index + 1}`,
       supplier_name: CustomerInvoiceSchema.customer_name,
@@ -77,11 +77,14 @@ export default function CustomersPage() {
 
   // Calculate stats from fetched data or mock data (fallback)
   const dataSource = invoices.length > 0 ? invoices : customerInvoices
+  const toNumber = (v: unknown) =>
+    typeof v === "number" ? v : Number(String(v ?? "0").replace(",", ".")) || 0
+
   const totalRevenue = dataSource.reduce(
-    (sum, inv) => sum + inv.baseImponible,
+    (sum, inv) => sum + toNumber((inv as any).baseImponible),
     0
   )
-  const uniqueClients = new Set(dataSource.map((inv) => inv.entityName))
+  const uniqueClients = new Set(dataSource.map((inv) => inv.supplier_name || inv.customer_name || inv.entityName))
     .size
   const totalInvoices = dataSource.length
   const avgInvoice = totalInvoices > 0 ? totalRevenue / totalInvoices : 0
