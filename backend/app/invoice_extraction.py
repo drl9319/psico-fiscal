@@ -6,7 +6,7 @@ import os
 import tempfile
 from datetime import date
 from pathlib import Path
-from typing import Any, BinaryIO, Optional, Union
+from typing import Any, BinaryIO, Optional, Union, Dict
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -40,6 +40,9 @@ class InvoiceSchema(BaseModel):
     tax: float
     total: float
     retencion: float = Field(default=0.0, description="Retención IRPF aplicada, si existe. Por defecto es 0.0.")
+    # Duplicate detection metadata (optional)
+    is_duplicate: bool = Field(default=False, description="True if an invoice with the same invoice_number exists in the DB.")
+    existing_record: Optional[Dict[str, Any]] = Field(default=None, description="Existing DB record when duplicate is detected.")
 
     if _PYDANTIC_V2:
 
@@ -86,6 +89,8 @@ def extract_invoice_data(
     model: str = "gemini-1.5-flash",
     temperature: float = 0.0,
     max_chars: int = 120_000,
+    check_db: bool = True,
+    db_table: str = "invoices",
 ) -> InvoiceSchema:
     """
     Extract invoice data from the provided PDF content and return a validated `InvoiceSchema` object.
@@ -156,9 +161,43 @@ def extract_invoice_data(
         )
 
         result = structured.invoke([system, human])
-        if isinstance(result, InvoiceSchema):
-            return result
-        return InvoiceSchema.model_validate(result) if _PYDANTIC_V2 else InvoiceSchema.parse_obj(result)
+
+        # Normalize result to a plain dict so we can attach duplicate info if needed
+        if isinstance(result, dict):
+            raw: dict = result
+        else:
+            # Pydantic model or similar
+            if hasattr(result, "model_dump"):
+                raw = result.model_dump()  # pydantic v2
+            elif hasattr(result, "dict"):
+                raw = result.dict()
+            else:
+                # Fallback: try to treat as mapping
+                try:
+                    raw = dict(result)
+                except Exception:
+                    raw = {}
+
+        # Optional DB duplicate check
+        if check_db:
+            try:
+                from .db_supabase_manager import SupabaseRepository
+
+                invoice_num = raw.get("invoice_number")
+                if invoice_num:
+                    repo = SupabaseRepository.get_instance()
+                    resp = repo.client.table(db_table).select("*").eq("invoice_number", invoice_num).limit(1).execute()
+                    existing = getattr(resp, "data", None)
+                    if existing:
+                        # attach duplicate info
+                        raw["is_duplicate"] = True
+                        raw["existing_record"] = existing[0]
+            except Exception as e:
+                logger = logging.getLogger("uvicorn.error")
+                logger.warning("DB duplicate check failed: %s", e)
+
+        # Validate and return InvoiceSchema with potential duplicate metadata
+        return InvoiceSchema.model_validate(raw) if _PYDANTIC_V2 else InvoiceSchema.parse_obj(raw)
 
     except (ValueError, TypeError) as e:
         # Coerción numérica / validación de esquema

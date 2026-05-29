@@ -67,6 +67,7 @@ async def save_invoice_endpoint(invoice: InvoiceSchema):
             "supplier_name": invoice.supplier_name,
             "supplier_id": invoice.supplier_id,
             "supplier_address": invoice.supplier_address,
+            "invoice_number": invoice.invoice_number,
             #"invoice_serie": invoice.invoice_serie,
             "amount": Decimal(str(invoice.amount)),
             "tax": Decimal(str(invoice.tax)),

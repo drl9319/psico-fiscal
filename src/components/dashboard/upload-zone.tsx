@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { InvoiceRecord } from "@/components/dashboard/data-table"
+import { InvoiceRecord } from "@/components/dashboard/data-table-invoice-extraction"
 
 type UploadZoneIcon = "pdf" | "excel"
 
@@ -16,8 +16,12 @@ export type ExtractedInvoice = InvoiceRecord & {
   fileName: string
   status: 'pending' | 'extracting' | 'extracted' | 'error'
   errorMessage?: string
-  tax_amount_zero?: number
   customer_id?: string
+  // Excel-specific fields
+  subtotal?: number
+  subtotal_discounted?: number
+  tax_base_zero?: number
+  tax_amount_zero?: number
 }
 
 interface UploadZoneProps {
@@ -66,17 +70,20 @@ export function UploadZone({
         {
           id,
           fileName: file.name,
-          status: 'extracting',
+          status: 'extracting' as const,
           accounting_date: new Date(),
           supplier_name: "",
           supplier_id: "",
           supplier_address: "",
           amount: 0,
+          tax: 0,
           taxPercent: 0,
-          total: 0,
+          retencionAmount: 0,
           retencionPercent: 0,
+          total: 0,
           invoice_number: "",
           category: "Otros",
+          customer_id: "",
         },
       ])
 
@@ -95,27 +102,31 @@ export function UploadZone({
 
         const extractedData = Array.isArray(data) ? data : [data]
 
-        extractedData.forEach((item, index) => {
+        extractedData.forEach((item: Record<string, unknown>, index) => {
           const record: ExtractedInvoice = {
             id: `${id}-${index}`,
             fileName: file.name,
-            status: 'extracted',
-            accounting_date: item.accounting_date ? new Date(item.accounting_date) : new Date(),
-            invoice_number: item.invoice_number || 'N/A',
-            supplier_name: item.supplier_name || item.customer_name || 'Desconocido',
-            supplier_id: item.supplier_id || item.customer_id || 'N/A',
-            supplier_address: item.supplier_address || 'N/A',
+            status: 'extracted' as const,
+            accounting_date: item.accounting_date ? new Date(item.accounting_date as string) : new Date(),
+            invoice_number: (item.invoice_number as string) || 'N/A',
+            supplier_name: (item.supplier_name as string) || (item.customer_name as string) || 'Desconocido',
+            supplier_id: (item.supplier_id as string) || (item.customer_id as string) || 'N/A',
+            supplier_address: (item.supplier_address as string) || 'N/A',
             amount: Number(item.amount || 0),
+            // Backend returns actual tax IVA amount (not a percentage)
+            tax: Number(item.tax || 0),
             taxPercent: Number(item.taxPercent || 0),
+            // Backend returns actual retencion amount (not a percentage)
+            retencionAmount: Number(item.retencion || 0),
             retencionPercent: Number(item.retencionPercent || 0),
             total: Number(item.total || 0),
-            category: item.category || "Otros",
-            customer_id: item.customer_id || 'N/A',
-            // Campos adicionales que mencionaste del Excel
-            subtotal: item.subtotal,
-            subtotal_discounted: item.subtotal_discounted,
-            tax_base_zero: item.tax_base_zero,
-            tax_amount_zero: item.tax_amount_zero,
+            category: (item.category as string) || "Otros",
+            customer_id: (item.customer_id as string) || 'N/A',
+            // Excel-specific fields preserved for DataTableExcel
+            subtotal: item.subtotal !== undefined ? Number(item.subtotal) : undefined,
+            subtotal_discounted: item.subtotal_discounted !== undefined ? Number(item.subtotal_discounted) : undefined,
+            tax_base_zero: item.tax_base_zero !== undefined ? Number(item.tax_base_zero) : undefined,
+            tax_amount_zero: item.tax_amount_zero !== undefined ? Number(item.tax_amount_zero) : undefined,
           }
           allResults.push(record)
         })
@@ -128,18 +139,21 @@ export function UploadZone({
         const errorRecord: ExtractedInvoice = {
           id,
           fileName: file.name,
-          status: 'error',
+          status: 'error' as const,
           errorMessage: e instanceof Error ? e.message : "Error desconocido",
           accounting_date: new Date(),
           supplier_name: "",
           supplier_id: "",
           supplier_address: "",
           amount: 0,
+          tax: 0,
           taxPercent: 0,
-          total: 0,
+          retencionAmount: 0,
           retencionPercent: 0,
+          total: 0,
           invoice_number: "",
           category: "Otros",
+          customer_id: "",
         }
         allResults.push(errorRecord)
         setExtractedInvoices(prev => prev.map(inv => inv.id === id ? errorRecord : inv))

@@ -1,0 +1,17 @@
+# Project Context & AI Instructions
+
+## Tech Stack & Architecture
+- **Backend:** FastAPI (Python 3.11+) running on port `8000`.
+- **Frontend:** Next.js (TypeScript) with Tailwind CSS and Shadcn components.
+- **Database:** Supabase (PostgreSQL).
+
+## Key Directory Structure
+- `/backend/app/models/`: Pydantic schemas for data validation.
+- `/backend/app/routes/`: FastAPI endpoints and business logic.
+- `/frontend/src/components/`: React components and data tables.
+- `/frontend/src/app/`: Next.js pages and routing.
+
+## Critical Development Rules & Conventions
+1. **Database IDs:** The primary key `id` column is auto-incremental and managed directly by Supabase. When CREATING new records, never send the `id` field from the frontend or backend; let the database handle it.
+2. **Negative Values Support:** Allow negative values in `amount`, `tax`, and `total` fields within invoice schemas to support credit notes and adjustments. Do NOT use `ge=0` constraints in Pydantic for these specific fields.
+3. **Currency & Precision:** Always use Python's `Decimal` type for monetary amounts and totals in the backend. Never use `float` to avoid floating-point precision issues.

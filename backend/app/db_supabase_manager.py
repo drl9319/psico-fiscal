@@ -44,8 +44,8 @@ class SupabaseRepository:
     async def create(self, table: str, model: BaseModel) -> dict:
         """Crea un nuevo registro con validación Pydantic."""
         try:
-            ##data = model.model_dump()
-            data = model.model_dump(mode='json')
+            # Excluimos 'id' porque es auto-incremental y lo gestiona Supabase/BD
+            data = model.model_dump(mode='json', exclude={'id'})
             response = self.client.table(table).insert(data).execute()
             logger.info(f"Registro creado exitosamente en {table}.")
             return response.data

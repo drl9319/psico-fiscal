@@ -39,20 +39,27 @@ export default function UploadPage() {
     const invoicesToSave = allExtractedInvoices.filter(invoice => selectedInvoiceIds.includes(invoice.id));
     if (invoicesToSave.length === 0) return
 
-    const formattedInvoices = invoicesToSave.map(invoice => ({
-      accounting_date: invoice.accounting_date.toISOString().split('T')[0], // YYYY-MM-DD
-      supplier_name: invoice.supplier_name,
-      invoice_number: invoice.invoice_number,
-      supplier_id: invoice.supplier_id || "N/A", // Provide a default if null
-      supplier_address: invoice.supplier_address || "N/A", // Provide a default if null
-      amount: invoice.amount,
-      tax: invoice.amount * (invoice.taxPercent / 100), // Calculate tax amount
-      total: invoice.total,
-      retencion: invoice.amount * (invoice.retencionPercent / 100), // Calculate retention amount
-      category: invoice.category,
-      fileName: invoice.fileName,
-      status: invoice.status,
-    }));
+    const formattedInvoices = invoicesToSave.map(invoice => {
+      const baseAmount = invoice.amount ?? 0;
+      const dateStr = invoice.accounting_date
+        ? new Date(invoice.accounting_date).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
+      return {
+        accounting_date: dateStr,
+        supplier_name: invoice.supplier_name,
+        invoice_number: invoice.invoice_number,
+        supplier_id: invoice.supplier_id || "N/A",
+        supplier_address: invoice.supplier_address || "N/A",
+        amount: baseAmount,
+        // Use actual tax IVA amount from extraction (not computed from percentage)
+        tax: invoice.tax ?? (baseAmount * (invoice.taxPercent ?? 0) / 100),
+        total: invoice.total ?? 0,
+        retencion: invoice.retencionAmount ?? (baseAmount * (invoice.retencionPercent ?? 0) / 100),
+        category: invoice.category,
+        fileName: invoice.fileName,
+        status: invoice.status,
+      };
+    });
 
     setSaveAllError(null)
     setSaveAllSuccess(false)
