@@ -68,7 +68,7 @@ class SupabaseRepository:
             logger.error(f"Error al obtener registros de {table}: {str(e)}")
             raise
 
-    async def update(self, table: str, record_id: str, updates: dict) -> dict:
+    async def update(self, table: str, record_id: int | str, updates: dict) -> dict:
         """Modifica un registro existente."""
         try:
             response = self.client.table(table).update(updates).eq("id", record_id).execute()
@@ -78,7 +78,7 @@ class SupabaseRepository:
             logger.error(f"Error al actualizar registro {record_id} en {table}: {str(e)}")
             raise
 
-    async def delete(self, table: str, record_id: str) -> bool:
+    async def delete(self, table: str, record_id: int | str) -> bool:
         """Borra un registro por ID."""
         try:
             self.client.table(table).delete().eq("id", record_id).execute()

@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { DataTable } from "@/components/dashboard/data-table"
 import type { InvoiceRecord } from "@/components/dashboard/data-table"
@@ -9,11 +10,12 @@ import { Euro, Receipt, TrendingUp, Users } from "lucide-react"
 import { useEffect, useState } from "react"
 
 interface BackendInvoice {
-  accounting_date: string; // Cambiado de accounting_date
-  customer_name: string;   // Cambiado de customer_name
-  customer_id: string;     // Cambiado de customer_id
-  customer_address: string;// Cambiado de customer_address
-  amount: number;          // Cambiado de base
+  id: number;              // Database auto-incremental ID
+  accounting_date: string;
+  customer_name: string;
+  customer_id: string;
+  customer_address: string;
+  amount: number;
   tax: number;
   tax_percent: number;
   total: number;
@@ -28,24 +30,100 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // ── Edit handler: PUT updated invoice to backend ──
+  const handleEdit = React.useCallback(
+    async (record: InvoiceRecord): Promise<boolean> => {
+      try {
+        const numericId = Number(record.id)
+        if (isNaN(numericId)) {
+          console.error("Invalid invoice ID:", record.id)
+          return false
+        }
+
+        const payload = {
+          accounting_date: record.accounting_date.toISOString().split("T")[0],
+          customer_name: record.supplier_name,
+          customer_id: record.customer_id || "",
+          customer_address: record.supplier_address || "",
+          invoice_number: record.invoice_number,
+          amount: record.baseImponible,
+          tax: record.taxAmount,
+          tax_percent: record.taxPercent,
+          total: record.total,
+          retencion: record.retencionAmount,
+          retencion_percent: record.retencionPercent,
+        }
+
+        const response = await fetch(`${apiBaseUrl}/update_customer_invoice/${numericId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+
+        if (!response.ok) {
+          const errData = await response.json()
+          console.error("Update failed:", errData)
+          return false
+        }
+
+        return true
+      } catch (err) {
+        console.error("Error updating invoice:", err)
+        return false
+      }
+    },
+    [apiBaseUrl]
+  )
+
+  // ── Delete handler: DELETE invoice from backend ──
+  const handleDelete = React.useCallback(
+    async (id: string): Promise<boolean> => {
+      try {
+        const numericId = Number(id)
+        if (isNaN(numericId)) {
+          console.error("Invalid invoice ID:", id)
+          return false
+        }
+
+        const response = await fetch(`${apiBaseUrl}/delete_customer_invoice/${numericId}`, {
+          method: "DELETE",
+        })
+
+        if (!response.ok) {
+          const errData = await response.json()
+          console.error("Delete failed:", errData)
+          return false
+        }
+
+        return true
+      } catch (err) {
+        console.error("Error deleting invoice:", err)
+        return false
+      }
+    },
+    [apiBaseUrl]
+  )
+
   // Transform backend response to frontend format
-  const transformInvoice = (CustomerInvoiceSchema: BackendInvoice, index: number): InvoiceRecord => {
+  const transformInvoice = (item: BackendInvoice, index: number): InvoiceRecord => {
     
     return {
-      id: CustomerInvoiceSchema.id || `inv-${index}`,
-      accounting_date: new Date(CustomerInvoiceSchema.accounting_date),
-      invoice_number: CustomerInvoiceSchema.invoice_number || `INV-${index + 1}`,
-      supplier_name: CustomerInvoiceSchema.customer_name,
-      baseImponible: CustomerInvoiceSchema.amount,
-      taxAmount: CustomerInvoiceSchema.tax,
-      taxPercent: CustomerInvoiceSchema.tax_percent || 0,
-      retencionAmount: CustomerInvoiceSchema.retencion,
-      retencionPercent: CustomerInvoiceSchema.retencion_percent || 0,
-      total: CustomerInvoiceSchema.total,
-      category: "Otros", // Ajustar si hay categorías específicas
-      fileName: "N/A", // Asignar un valor adecuado si está disponible
-      status: "Validado", // Asignar un valor adecuado si está disponible
-      customer_id: CustomerInvoiceSchema.customer_id || "N/A",
+      id: String(item.id),
+      accounting_date: new Date(item.accounting_date),
+      invoice_number: item.invoice_number || `INV-${index + 1}`,
+      supplier_name: item.customer_name,
+      supplier_id: item.customer_id || "N/A",
+      supplier_address: item.customer_address || null,
+      baseImponible: item.amount,
+      taxAmount: item.tax,
+      taxPercent: item.tax_percent || 0,
+      retencionAmount: item.retencion,
+      retencionPercent: item.retencion_percent || 0,
+      total: item.total,
+      category: "Otros",
+      fileName: "N/A",
+      status: "Validado",
+      customer_id: item.customer_id || "N/A",
     }
   }
 
@@ -84,7 +162,7 @@ export default function CustomersPage() {
     (sum, inv) => sum + toNumber((inv as any).baseImponible),
     0
   )
-  const uniqueClients = new Set(dataSource.map((inv) => inv.supplier_name || inv.customer_name || inv.entityName))
+  const uniqueClients = new Set(dataSource.map((inv) => inv.supplier_name))
     .size
   const totalInvoices = dataSource.length
   const avgInvoice = totalInvoices > 0 ? totalRevenue / totalInvoices : 0
@@ -166,7 +244,12 @@ export default function CustomersPage() {
                 <p className="text-muted-foreground">Cargando facturas...</p>
               </div>
             ) : (
-              <DataTable data={invoices} type="customer" />
+              <DataTable
+                data={invoices}
+                type="customer"
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
             )}
           </CardContent>
         </Card>

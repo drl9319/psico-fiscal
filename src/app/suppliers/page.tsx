@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { DataTable } from "@/components/dashboard/data-table"
 import type { InvoiceRecord } from "@/components/dashboard/data-table"
@@ -9,6 +10,7 @@ import { Building2, Percent, Receipt, TrendingDown } from "lucide-react"
 import { useEffect, useState } from "react"
 
 interface BackendInvoice {
+  id: number              // Database auto-incremental ID
   accounting_date: string
   supplier_name: string
   supplier_id: string
@@ -28,24 +30,99 @@ export default function SuppliersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // ── Edit handler: PUT updated invoice to backend ──
+  const handleEdit = React.useCallback(
+    async (record: InvoiceRecord): Promise<boolean> => {
+      try {
+        const numericId = Number(record.id)
+        if (isNaN(numericId)) {
+          console.error("Invalid invoice ID:", record.id)
+          return false
+        }
+
+        const payload = {
+          accounting_date: record.accounting_date.toISOString().split("T")[0],
+          supplier_name: record.supplier_name,
+          supplier_id: record.supplier_id || "",
+          supplier_address: record.supplier_address || "",
+          invoice_number: record.invoice_number,
+          amount: record.baseImponible,
+          tax: record.taxAmount,
+          tax_percent: record.taxPercent,
+          total: record.total,
+          retencion: record.retencionAmount,
+          retencion_percent: record.retencionPercent,
+        }
+
+        const response = await fetch(`${apiBaseUrl}/update_supplier_invoice/${numericId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+
+        if (!response.ok) {
+          const errData = await response.json()
+          console.error("Update failed:", errData)
+          return false
+        }
+
+        return true
+      } catch (err) {
+        console.error("Error updating invoice:", err)
+        return false
+      }
+    },
+    [apiBaseUrl]
+  )
+
+  // ── Delete handler: DELETE invoice from backend ──
+  const handleDelete = React.useCallback(
+    async (id: string): Promise<boolean> => {
+      try {
+        const numericId = Number(id)
+        if (isNaN(numericId)) {
+          console.error("Invalid invoice ID:", id)
+          return false
+        }
+
+        const response = await fetch(`${apiBaseUrl}/delete_supplier_invoice/${numericId}`, {
+          method: "DELETE",
+        })
+
+        if (!response.ok) {
+          const errData = await response.json()
+          console.error("Delete failed:", errData)
+          return false
+        }
+
+        return true
+      } catch (err) {
+        console.error("Error deleting invoice:", err)
+        return false
+      }
+    },
+    [apiBaseUrl]
+  )
+
   // Transform backend response to frontend format
-  const transformInvoice = (supplierInvoice: BackendInvoice, index: number): InvoiceRecord => {
+  const transformInvoice = (item: BackendInvoice, index: number): InvoiceRecord => {
     return {
-      id: supplierInvoice.id || `inv-${index}`,
-      accounting_date: new Date(supplierInvoice.accounting_date),
-      invoice_number: supplierInvoice.invoice_number || `INV-${index + 1}`,
-      supplier_name: supplierInvoice.supplier_name,
-      supplier_id: supplierInvoice.supplier_id,
-      supplier_address: supplierInvoice.supplier_address,
-      baseImponible: supplierInvoice.amount,
-      taxAmount: supplierInvoice.tax,
-      taxPercent: supplierInvoice.tax_percent || 0,
-      retencionAmount: supplierInvoice.retencion,
-      retencionPercent: supplierInvoice.retencion_percent || 0,
-      total: supplierInvoice.total,
+      id: String(item.id),
+      accounting_date: new Date(item.accounting_date),
+      invoice_number: item.invoice_number || `INV-${index + 1}`,
+      supplier_name: item.supplier_name,
+      supplier_id: item.supplier_id || "N/A",
+      supplier_address: item.supplier_address || null,
+      baseImponible: item.amount,
+      taxAmount: item.tax,
+      taxPercent: item.tax_percent || 0,
+      retencionAmount: item.retencion,
+      retencionPercent: item.retencion_percent || 0,
+      total: item.total,
       category: "Otros",
       fileName: "N/A",
       status: "Validado",
+      customer_id: item.supplier_id || "N/A",
     }
   }
 
@@ -170,7 +247,12 @@ export default function SuppliersPage() {
                 <p className="text-muted-foreground">Cargando facturas...</p>
               </div>
             ) : (
-              <DataTable data={dataSource} type="supplier" />
+              <DataTable
+                data={dataSource}
+                type="supplier"
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
             )}
           </CardContent>
         </Card>

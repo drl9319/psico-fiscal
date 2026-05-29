@@ -188,6 +188,66 @@ async def get_supplier_invoices_endpoint(limit: int = 100):
     logger.error(f"Prueba comienzo a leer facturas, repo={repo}")
     return await repo.get_all("supplier_invoices", limit=limit)
 
+
+# ──────────────────────────────────────────────
+# UPDATE endpoints
+# ──────────────────────────────────────────────
+
+@app.put("/update_customer_invoice/{invoice_id}")
+async def update_customer_invoice_endpoint(invoice_id: int, invoice: CustomerInvoiceSchema):
+    """Update a customer invoice by its ID."""
+    repo = SupabaseRepository.get_instance()
+    # Exclude 'id' so we don't try to overwrite the PK
+    updates = invoice.model_dump(mode='json', exclude={'id'})
+    try:
+        result = await repo.update("customer_invoices", invoice_id, updates)
+        return {"status": "success", "data": result}
+    except Exception as e:
+        logger.error(f"Error updating customer invoice {invoice_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/update_supplier_invoice/{invoice_id}")
+async def update_supplier_invoice_endpoint(invoice_id: int, invoice: SupplierInvoiceSchema):
+    """Update a supplier invoice by its ID."""
+    repo = SupabaseRepository.get_instance()
+    updates = invoice.model_dump(mode='json', exclude={'id'})
+    try:
+        result = await repo.update("supplier_invoices", invoice_id, updates)
+        return {"status": "success", "data": result}
+    except Exception as e:
+        logger.error(f"Error updating supplier invoice {invoice_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ──────────────────────────────────────────────
+# DELETE endpoints
+# ──────────────────────────────────────────────
+
+@app.delete("/delete_customer_invoice/{invoice_id}")
+async def delete_customer_invoice_endpoint(invoice_id: int):
+    """Delete a customer invoice by its ID."""
+    repo = SupabaseRepository.get_instance()
+    try:
+        await repo.delete("customer_invoices", invoice_id)
+        return {"status": "success", "message": f"Cliente factura {invoice_id} eliminada"}
+    except Exception as e:
+        logger.error(f"Error deleting customer invoice {invoice_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/delete_supplier_invoice/{invoice_id}")
+async def delete_supplier_invoice_endpoint(invoice_id: int):
+    """Delete a supplier invoice by its ID."""
+    repo = SupabaseRepository.get_instance()
+    try:
+        await repo.delete("supplier_invoices", invoice_id)
+        return {"status": "success", "message": f"Proveedor factura {invoice_id} eliminada"}
+    except Exception as e:
+        logger.error(f"Error deleting supplier invoice {invoice_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/customer_invoices_summary", response_model=InvoiceSummaryResponse)
 async def get_customer_invoices_summary_endpoint(
     start_date: str,

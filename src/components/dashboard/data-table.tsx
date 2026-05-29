@@ -74,6 +74,8 @@ interface DataTableProps {
   type: "customer" | "supplier"
   onDataChange?: (data: InvoiceRecord[]) => void
   onSelectedChange?: (selectedIds: string[]) => void
+  onEdit?: (record: InvoiceRecord) => Promise<boolean>
+  onDelete?: (id: string) => Promise<boolean>
 }
 
 const categories = [
@@ -98,7 +100,7 @@ const categoryColors: Record<string, string> = {
   Otros: "bg-muted text-muted-foreground",
 }
 
-export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTableProps) {
+export function DataTable({ data, type, onDataChange, onSelectedChange, onEdit, onDelete }: DataTableProps) {
   const [searchTerm, setSearchTerm] = React.useState("")
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>()
   const [categoryFilter, setCategoryFilter] = React.useState<string>("all")
@@ -161,13 +163,39 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
   }, [])
 
   const handleSaveClick = React.useCallback(
-    (id: string) => {
+    async (id: string) => {
+      const record = editedData.find((r) => r.id === id)
+      if (!record) return
+
+      // Call the API if onEdit is provided
+      if (onEdit) {
+        const success = await onEdit(record)
+        if (!success) return // Keep editing mode if save failed
+      }
+
       setEditedData((prev) =>
         prev.map((record) => (record.id === id ? { ...record, _isEditing: false } : record))
       )
       onDataChange?.(editedData.map((record) => (record.id === id ? { ...record, _isEditing: false } : record)))
     },
-    [editedData, onDataChange]
+    [editedData, onDataChange, onEdit]
+  )
+
+  const handleDeleteClick = React.useCallback(
+    async (id: string) => {
+      if (!window.confirm("¿Estás seguro de que deseas eliminar este registro?")) return
+
+      // Call the API if onDelete is provided
+      if (onDelete) {
+        const success = await onDelete(id)
+        if (!success) return
+      }
+
+      // Remove from local state
+      setEditedData((prev) => prev.filter((record) => record.id !== id))
+      onDataChange?.(editedData.filter((record) => record.id !== id))
+    },
+    [editedData, onDataChange, onDelete]
   )
 
   const handleCancelClick = React.useCallback((id: string) => {
@@ -480,7 +508,10 @@ export function DataTable({ data, type, onDataChange, onSelectedChange }: DataTa
                             Editar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDeleteClick(record.id)}
+                          >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Eliminar
                           </DropdownMenuItem>
