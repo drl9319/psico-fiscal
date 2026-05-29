@@ -4,6 +4,7 @@ import * as React from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import {
+  AlertTriangle,
   ChevronsLeft,
   ChevronLeft,
   ChevronRight,
@@ -43,6 +44,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 import { DateRangePicker } from "./date-range-picker"
 
@@ -67,6 +74,8 @@ export interface InvoiceRecord {
   _isValid?: boolean
   _originalData?: InvoiceRecord
   customer_id: string
+  is_duplicate?: boolean
+  duplicate_source?: string
 }
 
 interface DataTableProps {
@@ -269,6 +278,7 @@ export function DataTableInvoiceExtraction({ data, type, onDataChange, onSelecte
                   className="form-checkbox"
                 />
               </TableHead>
+              <TableHead className="w-[40px]"></TableHead>
               <TableHead className="w-[100px]">Fecha Contable</TableHead>
               <TableHead className="w-[120px]">Nº Factura</TableHead>
               <TableHead>{type === "customer" ? "Cliente" : "Proveedor"}</TableHead>
@@ -284,13 +294,19 @@ export function DataTableInvoiceExtraction({ data, type, onDataChange, onSelecte
           <TableBody>
             {paginatedData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
                   No se encontraron registros
                 </TableCell>
               </TableRow>
             ) : (
               paginatedData.map((record) => (
-                <TableRow key={record.id} className={record._isValid === false ? "bg-destructive/5" : undefined}>
+                <TableRow key={record.id} className={
+                  record._isValid === false
+                    ? "bg-destructive/5"
+                    : record.is_duplicate
+                      ? "bg-amber-50 dark:bg-amber-950/10"
+                      : undefined
+                }>
                   <TableCell>
                     <input
                       type="checkbox"
@@ -298,6 +314,26 @@ export function DataTableInvoiceExtraction({ data, type, onDataChange, onSelecte
                       onChange={(e) => handleSelectRow(record.id, e.target.checked)}
                       className="form-checkbox"
                     />
+                  </TableCell>
+                  <TableCell className="w-[40px] px-1">
+                    {record.is_duplicate ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <AlertTriangle className="h-4 w-4 text-amber-500 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="text-xs max-w-[220px]">
+                            <p className="font-semibold text-amber-600">Factura duplicada</p>
+                            <p className="text-muted-foreground">
+                              Nº {record.invoice_number} ya existe en{' '}
+                              {record.duplicate_source === 'customer_invoices'
+                                ? 'facturas de clientes'
+                                : 'facturas de proveedores'}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : null}
                   </TableCell>
                   <TableCell className="font-mono text-sm">
                     {record._isEditing ? (

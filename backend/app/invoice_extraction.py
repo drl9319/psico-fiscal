@@ -90,7 +90,7 @@ def extract_invoice_data(
     temperature: float = 0.0,
     max_chars: int = 120_000,
     check_db: bool = True,
-    db_table: str = "invoices",
+    db_table: str = "supplier_invoices",
 ) -> InvoiceSchema:
     """
     Extract invoice data from the provided PDF content and return a validated `InvoiceSchema` object.

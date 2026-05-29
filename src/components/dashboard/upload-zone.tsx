@@ -131,7 +131,7 @@ export function UploadZone({
           allResults.push(record)
         })
 
-        setExtractedInvoices(prev => 
+        setExtractedInvoices(prev =>
           prev.map(inv => inv.id === id ? allResults.find(r => r.id.startsWith(id))! : inv)
         )
 
@@ -157,6 +157,39 @@ export function UploadZone({
         }
         allResults.push(errorRecord)
         setExtractedInvoices(prev => prev.map(inv => inv.id === id ? errorRecord : inv))
+      }
+    }
+
+    // --- Duplicate check: query backend for invoices that already exist in DB ---
+    const successfulResults = allResults.filter(
+      (r) => r.status === 'extracted' && r.invoice_number && r.invoice_number !== 'N/A'
+    )
+    if (successfulResults.length > 0) {
+      const invoiceNumbers = successfulResults.map((r) => r.invoice_number)
+      try {
+        const dupRes = await fetch(`${apiBaseUrl}/check-duplicate-invoices`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invoice_numbers: invoiceNumbers }),
+        })
+        if (dupRes.ok) {
+          const dupData = await dupRes.json()
+          const duplicatesMap: Record<string, { is_duplicate: boolean; source_table?: string }> =
+            dupData.duplicates || {}
+          // Mark each record with duplicate info
+          for (const record of allResults) {
+            if (record.status === 'extracted' && record.invoice_number) {
+              const dupInfo = duplicatesMap[record.invoice_number]
+              if (dupInfo?.is_duplicate) {
+                record.is_duplicate = true
+                record.duplicate_source = dupInfo.source_table
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Duplicate check failed:", e)
+        // Non-blocking: continue even if duplicate check fails
       }
     }
 

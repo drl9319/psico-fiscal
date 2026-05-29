@@ -1,13 +1,14 @@
 from __future__ import annotations
 import logging
 from decimal import Decimal
-from typing import List
+from typing import List, Optional
 import tempfile
 import os
 import json
 
 from fastapi import FastAPI, File, HTTPException, UploadFile, logger
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from .models.supplier_invoices import SupplierInvoiceSchema
 
@@ -334,4 +335,60 @@ async def extract_excel_data_endpoint(file: UploadFile = File(...)):
     finally:
         # Clean up the temporary file
         os.unlink(temp_file_path)
+
+
+class DuplicateCheckRequest(BaseModel):
+    invoice_numbers: List[str]
+    check_tables: Optional[List[str]] = None  # defaults to both
+
+
+class DuplicateInfo(BaseModel):
+    is_duplicate: bool
+    source_table: Optional[str] = None
+    existing_record: Optional[dict] = None
+
+
+class DuplicateCheckResponse(BaseModel):
+    duplicates: dict[str, DuplicateInfo]  # keyed by invoice_number
+
+
+@app.post("/check-duplicate-invoices", response_model=DuplicateCheckResponse)
+async def check_duplicate_invoices_endpoint(req: DuplicateCheckRequest):
+    """
+    Check which invoice numbers already exist in customer_invoices and/or supplier_invoices tables.
+    
+    Returns a map of invoice_number -> DuplicateInfo indicating if it's a duplicate and where.
+    """
+    tables_to_check = req.check_tables or ["customer_invoices", "supplier_invoices"]
+    repo = SupabaseRepository.get_instance()
+    result: dict[str, DuplicateInfo] = {}
+
+    for inv_num in req.invoice_numbers:
+        if not inv_num.strip():
+            result[inv_num] = DuplicateInfo(is_duplicate=False)
+            continue
+
+        found_duplicate = False
+        found_table = None
+        found_record = None
+
+        for table in tables_to_check:
+            try:
+                resp = repo.client.table(table).select("*").eq("invoice_number", inv_num).limit(1).execute()
+                existing = getattr(resp, "data", None)
+                if existing:
+                    found_duplicate = True
+                    found_table = table
+                    found_record = existing[0]
+                    break
+            except Exception as e:
+                logger.warning("Duplicate check failed for table %s: %s", table, e)
+
+        result[inv_num] = DuplicateInfo(
+            is_duplicate=found_duplicate,
+            source_table=found_table,
+            existing_record=found_record,
+        )
+
+    return DuplicateCheckResponse(duplicates=result)
 
