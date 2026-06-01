@@ -76,6 +76,7 @@ export interface InvoiceRecord {
   customer_id: string
   is_duplicate?: boolean
   duplicate_source?: string
+  is_credit_note?: boolean
 }
 
 interface DataTableProps {
@@ -116,6 +117,7 @@ export function DataTableInvoiceExtraction({ data, type, onDataChange, onSelecte
   const [searchTerm, setSearchTerm] = React.useState("")
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>()
   const [categoryFilter, setCategoryFilter] = React.useState<string>("all")
+  const [creditNoteFilter, setCreditNoteFilter] = React.useState<string>("all")
   const [currentPage, setCurrentPage] = React.useState(1)
   const [editedData, setEditedData] = React.useState<InvoiceRecord[]>(data)
   const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set())
@@ -172,9 +174,14 @@ export function DataTableInvoiceExtraction({ data, type, onDataChange, onSelecte
 
       const matchesCategory = categoryFilter === "all" || record.category === categoryFilter
 
-      return matchesSearch && matchesDateRange && matchesCategory
+      const matchesCreditNote =
+        creditNoteFilter === "all" ||
+        (creditNoteFilter === "yes" && record.is_credit_note === true) ||
+        (creditNoteFilter === "no" && (record.is_credit_note === false || record.is_credit_note === undefined))
+
+      return matchesSearch && matchesDateRange && matchesCategory && matchesCreditNote
     })
-  }, [editedData, searchTerm, dateRange, categoryFilter])
+  }, [editedData, searchTerm, dateRange, categoryFilter, creditNoteFilter])
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
   const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -261,6 +268,18 @@ export function DataTableInvoiceExtraction({ data, type, onDataChange, onSelecte
           </SelectContent>
         </Select>
 
+        <Select value={creditNoteFilter} onValueChange={setCreditNoteFilter}>
+          <SelectTrigger className="w-[140px]">
+            <Filter className="mr-2 h-4 w-4" />
+            <SelectValue placeholder="Tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            <SelectItem value="no">Facturas</SelectItem>
+            <SelectItem value="yes">Abonos</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Button variant="outline" size="icon">
           <Download className="h-4 w-4" />
         </Button>
@@ -279,6 +298,7 @@ export function DataTableInvoiceExtraction({ data, type, onDataChange, onSelecte
                 />
               </TableHead>
               <TableHead className="w-[40px]"></TableHead>
+              <TableHead className="w-[80px]">Tipo</TableHead>
               <TableHead className="w-[100px]">Fecha Contable</TableHead>
               <TableHead className="w-[120px]">Nº Factura</TableHead>
               <TableHead>{type === "customer" ? "Cliente" : "Proveedor"}</TableHead>
@@ -294,7 +314,7 @@ export function DataTableInvoiceExtraction({ data, type, onDataChange, onSelecte
           <TableBody>
             {paginatedData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={13} className="h-24 text-center text-muted-foreground">
                   No se encontraron registros
                 </TableCell>
               </TableRow>
@@ -334,6 +354,13 @@ export function DataTableInvoiceExtraction({ data, type, onDataChange, onSelecte
                         </Tooltip>
                       </TooltipProvider>
                     ) : null}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {record.is_credit_note ? (
+                      <Badge variant="destructive" className="text-xs">Abono</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">Factura</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="font-mono text-sm">
                     {record._isEditing ? (

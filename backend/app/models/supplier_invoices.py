@@ -20,7 +20,7 @@ class SupplierInvoiceSchema(BaseModel):
     tax: Decimal = Field()
     total: Decimal = Field()
     retencion: Decimal = Field(default=Decimal('0.00'))
-    
+    is_credit_note: bool = Field(default=False, description="Indica si la factura es un abono (nota de crédito), basado en si el total es negativo.")
 
     class Config:
         # Esto permite que Pydantic maneje objetos de BD si lo necesitas

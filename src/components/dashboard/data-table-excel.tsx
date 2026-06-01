@@ -74,6 +74,7 @@ export interface InvoiceRecord {
   customer_id: string // Added NIF field
   is_duplicate?: boolean
   duplicate_source?: string
+  is_credit_note?: boolean
 }
 
 interface DataTableProps {
@@ -333,6 +334,7 @@ export function DataTableExcel({ data, type, onDataChange, onSelectedChange }: D
                 />
               </TableHead>
               <TableHead className="w-[40px]"></TableHead>
+              <TableHead className="w-[80px]">Tipo</TableHead>
               <TableHead className="w-[100px]">Fecha Contable</TableHead>
               <TableHead className="w-[120px]">Nº Factura</TableHead>
               <TableHead>{type === "customer" ? "Cliente" : "Proveedor"}</TableHead>
@@ -349,7 +351,7 @@ export function DataTableExcel({ data, type, onDataChange, onSelectedChange }: D
             {paginatedData.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={12}
+                  colSpan={13}
                   className="h-24 text-center text-muted-foreground"
                 >
                   No se encontraron registros
@@ -391,6 +393,13 @@ export function DataTableExcel({ data, type, onDataChange, onSelectedChange }: D
                         </Tooltip>
                       </TooltipProvider>
                     ) : null}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {record.is_credit_note ? (
+                      <Badge variant="destructive" className="text-xs">Abono</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">Factura</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="font-mono text-sm">
                     {record._isEditing ? (

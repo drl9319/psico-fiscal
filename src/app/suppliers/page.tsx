@@ -22,6 +22,7 @@ interface BackendInvoice {
   retencion: number
   retencion_percent: number
   invoice_number: string
+  is_credit_note?: boolean
 }
 
 export default function SuppliersPage() {
@@ -123,6 +124,8 @@ export default function SuppliersPage() {
       fileName: "N/A",
       status: "Validado",
       customer_id: item.supplier_id || "N/A",
+      // is_credit_note is derived from the total amount: negative total = credit note
+      is_credit_note: item.total < 0,
     }
   }
 

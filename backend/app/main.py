@@ -63,6 +63,7 @@ async def save_invoice_endpoint(invoice: InvoiceSchema):
     try:
         # Mapeo del esquema de extracción al esquema de la base de datos
         # Nota: La precisión se maneja con Decimal.
+        is_credit_note = float(invoice.total) < 0
         db_invoice_data = {
             "accounting_date": invoice.accounting_date,
             "supplier_name": invoice.supplier_name,
@@ -74,6 +75,7 @@ async def save_invoice_endpoint(invoice: InvoiceSchema):
             "tax": Decimal(str(invoice.tax)),
             "total": Decimal(str(invoice.total)),
             "retencion": Decimal(str(invoice.retencion)),
+            "is_credit_note": is_credit_note,
         }
         
         # Validación estricta con el esquema de la base de datos
@@ -101,6 +103,7 @@ async def save_multiple_invoices_endpoint(invoices: List[InvoiceSchema]):
 
     for i, invoice in enumerate(invoices):
         try:
+            is_credit_note = float(invoice.total) < 0
             db_invoice_data = {
                 "accounting_date": invoice.accounting_date,
                 "supplier_name": invoice.supplier_name,
@@ -111,6 +114,7 @@ async def save_multiple_invoices_endpoint(invoices: List[InvoiceSchema]):
                 "tax": Decimal(str(invoice.tax)),
                 "total": Decimal(str(invoice.total)),
                 "retencion": Decimal(str(invoice.retencion)),
+                "is_credit_note": is_credit_note,
             }
             invoice_validated = SupplierInvoiceSchema(**db_invoice_data)
             created_record = await repo.create("supplier_invoices", invoice_validated)
@@ -143,6 +147,7 @@ async def save_multiple_invoices_endpoint(invoices: List[CustomerInvoiceSchema])
 
     for i, invoice in enumerate(invoices):
         try:
+            is_credit_note = float(invoice.total) < 0
             db_invoice_data = {
                 "accounting_date": invoice.accounting_date,
                 "customer_name": invoice.customer_name,
@@ -153,6 +158,7 @@ async def save_multiple_invoices_endpoint(invoices: List[CustomerInvoiceSchema])
                 "tax": Decimal(str(invoice.tax)),
                 "total": Decimal(str(invoice.total)),
                 "retencion": Decimal(str(invoice.retencion)),
+                "is_credit_note": is_credit_note,
             }
             invoice_validated = CustomerInvoiceSchema(**db_invoice_data)
             created_record = await repo.create("customer_invoices", invoice_validated)

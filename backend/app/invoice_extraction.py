@@ -40,6 +40,8 @@ class InvoiceSchema(BaseModel):
     tax: float
     total: float
     retencion: float = Field(default=0.0, description="Retención IRPF aplicada, si existe. Por defecto es 0.0.")
+    # Auto-computed: credit note if total is negative
+    is_credit_note: bool = Field(default=False, description="True if total amount is negative (credit note / abono).")
     # Duplicate detection metadata (optional)
     is_duplicate: bool = Field(default=False, description="True if an invoice with the same invoice_number exists in the DB.")
     existing_record: Optional[Dict[str, Any]] = Field(default=None, description="Existing DB record when duplicate is detected.")
@@ -51,11 +53,38 @@ class InvoiceSchema(BaseModel):
         def _coerce_float(cls, v: Any) -> float:
             return _to_float(v)
 
+        @field_validator("total")
+        @classmethod
+        def _set_credit_note(cls, v: float) -> float:
+            return v
+
+        @field_validator("is_credit_note", mode="before")
+        @classmethod
+        def _compute_credit_note(cls, v: Any, info) -> bool:
+            # If already explicitly set, respect it
+            if isinstance(v, bool):
+                return v
+            # Compute from total amount
+            data = info.data
+            total = data.get("total")
+            if total is not None:
+                return float(total) < 0
+            return False
+
     else:
 
         @field_validator("amount", "tax", "total", pre=True)  # type: ignore[misc]
         def _coerce_float(cls, v: Any) -> float:  # noqa: N805
             return _to_float(v)
+
+        @field_validator("is_credit_note", pre=True, always=True)  # type: ignore[misc]
+        def _compute_credit_note_v1(cls, v: Any, values) -> bool:  # noqa: N805
+            if isinstance(v, bool):
+                return v
+            total = values.get("total")
+            if total is not None:
+                return float(total) < 0
+            return False
 
 
 def _to_float(v: Any) -> float:
