@@ -4,6 +4,7 @@ import React from "react"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { DataTable } from "@/components/dashboard/data-table"
 import type { InvoiceRecord } from "@/components/dashboard/data-table"
+import { AddInvoiceDialog } from "@/components/dashboard/add-invoice-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { customerInvoices } from "@/lib/mock-data"
 import { Euro, Receipt, TrendingUp, Users } from "lucide-react"
@@ -238,8 +239,9 @@ export default function CustomersPage() {
         </div>
 
         <Card>
-          <CardHeader className="pb-4">
+          <CardHeader className="flex flex-row items-center justify-between pb-4">
             <CardTitle className="text-base">Registro de Facturas</CardTitle>
+            <AddInvoiceDialog type="customer" onSuccess={fetchData} />
           </CardHeader>
           <CardContent>
             {loading ? (

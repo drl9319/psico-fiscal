@@ -194,6 +194,47 @@ async def save_multiple_invoices_endpoint(
     return {"status": "success", "saved_count": len(saved_invoices), "data": saved_invoices}
 
 
+# ──────────────────────────────────────────────
+# Manual invoice creation endpoints
+# ──────────────────────────────────────────────
+
+
+@app.post("/create_supplier_invoice", status_code=201)
+async def create_supplier_invoice_endpoint(
+    invoice: SupplierInvoiceSchema,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Create a single supplier invoice manually (not from PDF/Excel extraction).
+    Accepts SupplierInvoiceSchema directly and saves to supplier_invoices table.
+    """
+    try:
+        repo = SupabaseRepository.get_user_instance(user["access_token"])
+        created_record = await repo.create("supplier_invoices", invoice)
+        return {"status": "success", "data": created_record}
+    except Exception as e:
+        logger.error(f"Error creating supplier invoice: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al crear factura de proveedor: {e}") from e
+
+
+@app.post("/create_customer_invoice", status_code=201)
+async def create_customer_invoice_endpoint(
+    invoice: CustomerInvoiceSchema,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Create a single customer invoice manually (not from PDF/Excel extraction).
+    Accepts CustomerInvoiceSchema directly and saves to customer_invoices table.
+    """
+    try:
+        repo = SupabaseRepository.get_user_instance(user["access_token"])
+        created_record = await repo.create("customer_invoices", invoice)
+        return {"status": "success", "data": created_record}
+    except Exception as e:
+        logger.error(f"Error creating customer invoice: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al crear factura de cliente: {e}") from e
+
+
 @app.get("/get_customer_invoices", response_model=List[CustomerInvoiceSchema])
 async def get_customer_invoices_endpoint(
     limit: int = 100,
