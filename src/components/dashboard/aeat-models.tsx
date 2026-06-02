@@ -480,7 +480,7 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
           </Badge>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-8">
           {/* ════════════════════════════════════════
               Modelo 130
               ════════════════════════════════════════ */}
