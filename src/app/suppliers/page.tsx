@@ -53,6 +53,7 @@ export default function SuppliersPage() {
           total: record.total,
           retencion: record.retencionAmount,
           retencion_percent: record.retencionPercent,
+          is_credit_note: record.total < 0,
         }
 
         const response = await apiClient(`/update_supplier_invoice/${numericId}`, {

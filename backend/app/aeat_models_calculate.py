@@ -363,15 +363,15 @@ async def calculate_modelo_303(
     Calculation rules:
       IVA DEVENGADO (Output IVA):
         casilla150: sum customer_invoices amount (base imponible), tipo factura (is_credit_note=false)
-        casilla152: sum customer_invoices total, tipo factura (is_credit_note=false)
+        casilla152: sum customer_invoices tax (cuota IVA), tipo factura (is_credit_note=false)
         casilla14:  sum customer_invoices amount (base imponible), tipo Abono (is_credit_note=true)
-        casilla15:  sum customer_invoices total, tipo Abono (is_credit_note=true)
+        casilla15:  sum customer_invoices tax (cuota IVA), tipo Abono (is_credit_note=true)
 
       IVA DEDUCIBLE (Input IVA):
         casilla28:  sum supplier_invoices amount (base imponible), tipo factura (is_credit_note=false)
-        casilla29:  sum supplier_invoices total, tipo factura (is_credit_note=false)
-        casilla40:  sum customer_invoices amount (base imponible), tipo Abono (is_credit_note=true)
-        casilla41:  sum customer_invoices total, tipo Abono (is_credit_note=true)
+        casilla29:  sum supplier_invoices tax (cuota IVA), tipo factura (is_credit_note=false)
+        casilla40:  sum supplier_invoices amount (base imponible), tipo Abono (is_credit_note=true)
+        casilla41:  sum supplier_invoices tax (cuota IVA), tipo Abono (is_credit_note=true)
 
     Args:
         start_date: Start date for the calculation period (inclusive)
@@ -435,16 +435,16 @@ async def calculate_modelo_303(
 
         # ── IVA DEVENGADO ──
         casilla150 = sum_field(customer_filtered, "amount", is_credit_note=False)
-        casilla152 = sum_field(customer_filtered, "total", is_credit_note=False)
+        casilla152 = sum_field(customer_filtered, "tax", is_credit_note=False)
         casilla14  = sum_field(customer_filtered, "amount", is_credit_note=True)
-        casilla15  = sum_field(customer_filtered, "total", is_credit_note=True)
+        casilla15  = sum_field(customer_filtered, "tax", is_credit_note=True)
 
         # ── IVA DEDUCIBLE ──
         casilla28 = sum_field(supplier_filtered, "amount", is_credit_note=False)
-        casilla29 = sum_field(supplier_filtered, "total", is_credit_note=False)
-        # casilla40/41: customer invoices with tipo Abono (credit notes) per user specification
-        casilla40 = sum_field(customer_filtered, "amount", is_credit_note=True)
-        casilla41 = sum_field(customer_filtered, "total", is_credit_note=True)
+        casilla29 = sum_field(supplier_filtered, "tax", is_credit_note=False)
+        # casilla40/41: supplier invoices with tipo Abono (credit notes)
+        casilla40 = sum_field(supplier_filtered, "amount", is_credit_note=True)
+        casilla41 = sum_field(supplier_filtered, "tax", is_credit_note=True)
 
         # Determine quarter
         current_quarter = (start_date.month - 1) // 3 + 1
