@@ -16,8 +16,9 @@ from .invoice_extraction import InvoiceSchema, extract_invoice_data
 from .excel_extraction import extract_excel_data
 from .models.customer_invoices import CustomerInvoiceSchema
 from .models.modelo_130 import Modelo130Schema
+from .models.modelo_303 import Modelo303Schema
 from .db_supabase_manager import SupabaseRepository
-from .aeat_models_calculate import get_customer_invoices_summary, get_supplier_invoices_summary, save_modelo_130, get_modelo_130, calculate_new_declaracion, InvoiceSummaryResponse
+from .aeat_models_calculate import get_customer_invoices_summary, get_supplier_invoices_summary, save_modelo_130, get_modelo_130, calculate_new_declaracion, save_modelo_303, get_modelo_303, calculate_modelo_303, InvoiceSummaryResponse
 from pydantic import ValidationError
 
 app = FastAPI(title="Psico-Fiscal API")
@@ -374,6 +375,89 @@ async def calculate_modelo_130_endpoint(
     except Exception as e:
         logger.error(f"Error calculating new Modelo 130: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error calculating new Modelo 130: {str(e)}") from e
+
+
+# ──────────────────────────────────────────────
+# Modelo 303 endpoints
+# ──────────────────────────────────────────────
+
+
+@app.post("/save_modelo_303", status_code=201)
+async def save_modelo_303_endpoint(modelo: Modelo303Schema):
+    """
+    Save Modelo 303 (IVA) data to Supabase.
+
+    Body:
+    - ejercicio: Year (e.g., "2024")
+    - periodo: Period (e.g., "01", "02", etc.)
+    - casilla150, casilla152, casilla14, casilla15: IVA Devengado fields
+    - casilla28, casilla29, casilla40, casilla41: IVA Deducible fields
+    """
+    try:
+        result = await save_modelo_303(modelo)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        logger.error(f"Error saving Modelo 303: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error saving Modelo 303: {str(e)}") from e
+
+
+@app.get("/get_modelo_303", response_model=Modelo303Schema)
+async def get_modelo_303_endpoint(
+    ejercicio: str,
+    periodo: str,
+):
+    """
+    Retrieve Modelo 303 (IVA) data from Supabase by year and period.
+
+    Query Parameters:
+    - ejercicio: Year (e.g., "2024")
+    - periodo: Period (e.g., "01", "02", etc.)
+    """
+    try:
+        result = await get_modelo_303(ejercicio, periodo)
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Modelo 303 not found for ejercicio={ejercicio}, periodo={periodo}"
+            )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        logger.error(f"Error retrieving Modelo 303: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving Modelo 303: {str(e)}") from e
+
+
+@app.get("/calculate_modelo_303", response_model=Modelo303Schema)
+async def calculate_modelo_303_endpoint(
+    start_date: str,
+    end_date: str,
+):
+    """
+    Calculates a new Modelo 303 based on aggregated customer and supplier invoices
+    within the specified date range.
+
+    Query Parameters:
+    - start_date: ISO format date string (e.g., "2024-01-01")
+    - end_date: ISO format date string (e.g., "2024-12-31")
+    """
+    try:
+        from datetime import datetime
+        start = datetime.fromisoformat(start_date)
+        end = datetime.fromisoformat(end_date)
+        print(f"Calculating Modelo 303 for period endpoint: {start_date} to {end_date}")
+        return await calculate_modelo_303(start, end)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid date format or calculation error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Error calculating Modelo 303: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error calculating Modelo 303: {str(e)}") from e
+
 
 @app.post("/extract-excel")
 async def extract_excel_data_endpoint(file: UploadFile = File(...)):
