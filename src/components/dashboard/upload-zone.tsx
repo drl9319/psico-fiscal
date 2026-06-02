@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { InvoiceRecord } from "@/components/dashboard/data-table-invoice-extraction"
+import { apiClient } from "@/lib/api-client"
 
 type UploadZoneIcon = "pdf" | "excel"
 
@@ -50,8 +51,6 @@ export function UploadZone({
   const acceptAttr = acceptedTypes.join(",")
   const Icon = icon === "pdf" ? FileText : FileSpreadsheet
   const isPdfMode = icon === "pdf"
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
-
   const onFiles = React.useCallback((next: FileList | null) => {
     if (!next || next.length === 0) return
     setFiles((prev) => [...prev, ...Array.from(next)])
@@ -91,7 +90,7 @@ export function UploadZone({
         const form = new FormData()
         form.append("file", file, file.name)
 
-        const res = await fetch(`${apiBaseUrl}${endpoint || "/extract-invoice"}`, {
+        const res = await apiClient(`${endpoint || "/extract-invoice"}`, {
           method: "POST",
           body: form,
         })
@@ -169,9 +168,8 @@ export function UploadZone({
     if (successfulResults.length > 0) {
       const invoiceNumbers = successfulResults.map((r) => r.invoice_number)
       try {
-        const dupRes = await fetch(`${apiBaseUrl}/check-duplicate-invoices`, {
+        const dupRes = await apiClient("/check-duplicate-invoices", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoice_numbers: invoiceNumbers }),
         })
         if (dupRes.ok) {
@@ -198,7 +196,7 @@ export function UploadZone({
     onInvoicesExtracted(allResults)
     setIsProcessingAll(false)
     setFiles([])
-  }, [apiBaseUrl, files, endpoint, acceptedTypes, onInvoicesExtracted])
+  }, [files, endpoint, acceptedTypes, onInvoicesExtracted])
 
   const clearResults = () => {
     setFiles([])

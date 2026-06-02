@@ -22,6 +22,7 @@ class InvoiceSummaryResponse(BaseModel):
 async def get_customer_invoices_summary(
     start_date: datetime,
     end_date: datetime,
+    access_token: str = "",
 ) -> InvoiceSummaryResponse:
     """
     Retrieves customer invoices between two dates and calculates aggregated totals.
@@ -29,12 +30,13 @@ async def get_customer_invoices_summary(
     Args:
         start_date: Start date for the period (inclusive)
         end_date: End date for the period (inclusive)
+        access_token: User's JWT for RLS-aware queries.
     
     Returns:
         InvoiceSummaryResponse with aggregated amount, tax, and total
     """
     try:
-        repo = SupabaseRepository.get_instance()
+        repo = SupabaseRepository.get_user_instance(access_token) if access_token else SupabaseRepository.get_instance()
         
         # Get all customer invoices (will filter by date in the calculation)
         invoices = await repo.get_all("customer_invoices", limit=1000)
@@ -72,6 +74,7 @@ async def get_customer_invoices_summary(
 async def get_supplier_invoices_summary(
     start_date: datetime,
     end_date: datetime,
+    access_token: str = "",
 ) -> InvoiceSummaryResponse:
     """
     Retrieves supplier invoices between two dates and calculates aggregated totals.
@@ -79,12 +82,13 @@ async def get_supplier_invoices_summary(
     Args:
         start_date: Start date for the period (inclusive)
         end_date: End date for the period (inclusive)
+        access_token: User's JWT for RLS-aware queries.
     
     Returns:
         InvoiceSummaryResponse with aggregated amount, tax, and total
     """
     try:
-        repo = SupabaseRepository.get_instance()
+        repo = SupabaseRepository.get_user_instance(access_token) if access_token else SupabaseRepository.get_instance()
         
         # Get all supplier invoices (will filter by date in the calculation)
         invoices = await repo.get_all("supplier_invoices", limit=1000)
@@ -121,18 +125,20 @@ async def get_supplier_invoices_summary(
 
 async def save_modelo_130(
     modelo_130: Modelo130Schema,
+    access_token: str = "",
 ) -> dict:
     """
     Saves or updates Modelo 130 data in the Supabase database.
 
     Args:
         modelo_130: Modelo130Schema object with tax form data
+        access_token: User's JWT for RLS-aware queries.
 
     Returns:
         Dictionary with the created/updated record or error information
     """
     try:
-        repo = SupabaseRepository.get_instance()
+        repo = SupabaseRepository.get_user_instance(access_token) if access_token else SupabaseRepository.get_instance()
 
         # 1. Extraemos los campos del modelo en un diccionario para limpiarlos
         # Nota: Si usas Pydantic v1 usa modelo_130.dict(), si usas v2 usa .model_dump()
@@ -169,6 +175,7 @@ async def save_modelo_130(
 async def get_modelo_130(
     ejercicio: str,
     periodo: str,
+    access_token: str = "",
 ) -> Optional[Modelo130Schema]:
     """
     Retrieves Modelo 130 data from Supabase by ejercicio (year) and periodo (period).
@@ -176,12 +183,13 @@ async def get_modelo_130(
     Args:
         ejercicio: Year as string (e.g., "2024")
         periodo: Period as string (e.g., "Q1", "Q2", etc.)
+        access_token: User's JWT for RLS-aware queries.
     
     Returns:
         Modelo130Schema object if found, None otherwise
     """
     try:
-        repo = SupabaseRepository.get_instance()
+        repo = SupabaseRepository.get_user_instance(access_token) if access_token else SupabaseRepository.get_instance()
         
         # Get all records and filter by ejercicio and periodo
         # Note: For better performance with large datasets, consider adding
@@ -203,6 +211,7 @@ async def get_modelo_130(
 async def calculate_new_declaracion(
     start_date: datetime,
     end_date: datetime,
+    access_token: str = "",
 ) -> Modelo130Schema:
     """
     Calculates initial Modelo 130 values based on customer and supplier invoice summaries.
@@ -210,6 +219,7 @@ async def calculate_new_declaracion(
     Args:
         start_date: Start date for the calculation period (inclusive)
         end_date: End date for the calculation period (inclusive)
+        access_token: User's JWT for RLS-aware queries.
 
     Returns:
         A Modelo130Schema object with casilla01 (customer total revenue) and
@@ -218,8 +228,8 @@ async def calculate_new_declaracion(
     try:
         print("Entro en calculate_new_declaracion")
         print(f"Calculating new Modelo 130 for period: {start_date} to {end_date}")
-        customer_summary = await get_customer_invoices_summary(start_date, end_date)
-        supplier_summary = await get_supplier_invoices_summary(start_date, end_date)
+        customer_summary = await get_customer_invoices_summary(start_date, end_date, access_token)
+        supplier_summary = await get_supplier_invoices_summary(start_date, end_date, access_token)
 
         # Determine the quarter of the declaration
         current_quarter = start_date.month // 3 + 1
@@ -270,18 +280,20 @@ async def calculate_new_declaracion(
 
 async def save_modelo_303(
     modelo_303: Modelo303Schema,
+    access_token: str = "",
 ) -> dict:
     """
     Saves or updates Modelo 303 data in the Supabase database.
 
     Args:
         modelo_303: Modelo303Schema object with tax form data
+        access_token: User's JWT for RLS-aware queries.
 
     Returns:
         Dictionary with the created/updated record or error information
     """
     try:
-        repo = SupabaseRepository.get_instance()
+        repo = SupabaseRepository.get_user_instance(access_token) if access_token else SupabaseRepository.get_instance()
 
         datos_limpios = modelo_303.model_dump() if hasattr(modelo_303, 'model_dump') else modelo_303.dict()
         for clave, valor in datos_limpios.items():
@@ -310,6 +322,7 @@ async def save_modelo_303(
 async def get_modelo_303(
     ejercicio: str,
     periodo: str,
+    access_token: str = "",
 ) -> Optional[Modelo303Schema]:
     """
     Retrieves Modelo 303 data from Supabase by ejercicio (year) and periodo (period).
@@ -317,12 +330,13 @@ async def get_modelo_303(
     Args:
         ejercicio: Year as string (e.g., "2024")
         periodo: Period as string (e.g., "01", "02", etc.)
+        access_token: User's JWT for RLS-aware queries.
 
     Returns:
         Modelo303Schema object if found, None otherwise
     """
     try:
-        repo = SupabaseRepository.get_instance()
+        repo = SupabaseRepository.get_user_instance(access_token) if access_token else SupabaseRepository.get_instance()
 
         all_records = await repo.get_all("modelo303_presentaciones", limit=1000)
         print(f"Retrieved {len(all_records)} records from modelo303_presentaciones")
@@ -341,6 +355,7 @@ async def get_modelo_303(
 async def calculate_modelo_303(
     start_date: datetime,
     end_date: datetime,
+    access_token: str = "",
 ) -> Modelo303Schema:
     """
     Calculates Modelo 303 values based on aggregated customer and supplier invoices.
@@ -361,6 +376,7 @@ async def calculate_modelo_303(
     Args:
         start_date: Start date for the calculation period (inclusive)
         end_date: End date for the calculation period (inclusive)
+        access_token: User's JWT for RLS-aware queries.
 
     Returns:
         A Modelo303Schema object with calculated values.
@@ -368,7 +384,7 @@ async def calculate_modelo_303(
     try:
         print(f"Calculating Modelo 303 for period: {start_date} to {end_date}")
 
-        repo = SupabaseRepository.get_instance()
+        repo = SupabaseRepository.get_user_instance(access_token) if access_token else SupabaseRepository.get_instance()
 
         # ── Fetch all invoices ──
         customer_invoices = await repo.get_all("customer_invoices", limit=1000)

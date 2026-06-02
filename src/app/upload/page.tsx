@@ -9,6 +9,7 @@ import { Shield, Sparkles, Zap } from "lucide-react"
 import { DataTableInvoiceExtraction, InvoiceRecord } from "@/components/dashboard/data-table-invoice-extraction"
 import { DataTableExcel } from "@/components/dashboard/data-table-excel"
 import { Button } from "@/components/ui/button"
+import { apiClient } from "@/lib/api-client"
 
 export default function UploadPage() {
   const [allExtractedInvoices, setAllExtractedInvoices] = React.useState<InvoiceRecord[]>([])
@@ -32,8 +33,6 @@ export default function UploadPage() {
   const handleExcelDataExtracted = React.useCallback((data: InvoiceRecord[]) => {
     setExtractedExcelData((prev) => [...prev, ...data]);
   }, [])
-
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
 
   const saveAllInvoices = React.useCallback(async () => {
     const invoicesToSave = allExtractedInvoices.filter(invoice => selectedInvoiceIds.includes(invoice.id));
@@ -66,22 +65,12 @@ export default function UploadPage() {
     setIsSavingAll(true)
 
     try {
-      const res = await fetch(`${apiBaseUrl}/save-multiple-invoices`, {
+      const res = await apiClient("/save-multiple-invoices", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify(formattedInvoices),
       })
 
       const data = (await res.json()) as unknown
-      if (!res.ok) {
-        const detail =
-          typeof data === "object" && data && "detail" in data
-            ? String((data as { detail?: unknown }).detail)
-            : "Error desconocido al guardar todas las facturas."
-        throw new Error(detail)
-      }
       setSaveAllSuccess(true)
       // Remove saved invoices from the table
       setAllExtractedInvoices(prev => prev.filter(invoice => !selectedInvoiceIds.includes(invoice.id)))
@@ -91,7 +80,7 @@ export default function UploadPage() {
     } finally {
       setIsSavingAll(false)
     }
-  }, [apiBaseUrl, allExtractedInvoices, selectedInvoiceIds])
+  }, [allExtractedInvoices, selectedInvoiceIds])
   return (
     <DashboardLayout
       title="Centro de Subida"

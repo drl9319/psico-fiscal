@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Calculator, FileText, Info, Search, Save, Settings } from "lucide-react"
+import { apiClient } from "@/lib/api-client"
 
 import {
   Card,
@@ -164,8 +165,7 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
       setLoading130(true)
       setMessage130(null)
 
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
-      const response = await fetch(`${apiBaseUrl}/get_modelo_130?ejercicio=${ejercicio}&periodo=${periodo}`)
+      const response = await apiClient(`/get_modelo_130?ejercicio=${ejercicio}&periodo=${periodo}`)
 
       if (!response.ok) {
         throw new Error(`No se encontró declaración para ${ejercicio} - ${periodo}`)
@@ -198,8 +198,6 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
       setLoading130(true)
       setMessage130(null)
 
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
-
       const payload = {
         ejercicio,
         periodo,
@@ -213,9 +211,8 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
         Casilla19: casillas130.casilla19,
       }
 
-      const response = await fetch(`${apiBaseUrl}/save_modelo_130`, {
+      const response = await apiClient("/save_modelo_130", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
 
@@ -268,8 +265,6 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
       setLoading130(true)
       setMessage130(null)
 
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
-
       const startDate = dateRange?.from ? dateRange.from.toISOString().split("T")[0] : undefined
       const endDate = dateRange?.to ? dateRange.to.toISOString().split("T")[0] : undefined
 
@@ -277,8 +272,8 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
         throw new Error("Rango de fechas inválido.")
       }
 
-      const response = await fetch(
-        `${apiBaseUrl}/calculate_modelo_130?start_date=${startDate}&end_date=${endDate}`
+      const response = await apiClient(
+        `/calculate_modelo_130?start_date=${startDate}&end_date=${endDate}`
       )
 
       if (!response.ok) {
@@ -316,8 +311,7 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
       setLoading303(true)
       setMessage303(null)
 
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
-      const response = await fetch(`${apiBaseUrl}/get_modelo_303?ejercicio=${ejercicio}&periodo=${periodo}`)
+      const response = await apiClient(`/get_modelo_303?ejercicio=${ejercicio}&periodo=${periodo}`)
 
       if (!response.ok) {
         throw new Error(`No se encontró declaración 303 para ${ejercicio} - ${periodo}`)
@@ -350,8 +344,6 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
       setLoading303(true)
       setMessage303(null)
 
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
-
       const startDate = dateRange?.from ? dateRange.from.toISOString().split("T")[0] : undefined
       const endDate = dateRange?.to ? dateRange.to.toISOString().split("T")[0] : undefined
 
@@ -359,8 +351,8 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
         throw new Error("Rango de fechas inválido.")
       }
 
-      const response = await fetch(
-        `${apiBaseUrl}/calculate_modelo_303?start_date=${startDate}&end_date=${endDate}`
+      const response = await apiClient(
+        `/calculate_modelo_303?start_date=${startDate}&end_date=${endDate}`
       )
 
       if (!response.ok) {
@@ -394,8 +386,6 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
       setLoading303(true)
       setMessage303(null)
 
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
-
       const payload = {
         ejercicio,
         periodo,
@@ -409,9 +399,8 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
         casilla41: casillas303.casilla41,
       }
 
-      const response = await fetch(`${apiBaseUrl}/save_modelo_303`, {
+      const response = await apiClient("/save_modelo_303", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
 

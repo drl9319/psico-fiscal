@@ -3,6 +3,7 @@
 import * as React from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { apiClient } from "@/lib/api-client"
 import {
   AlertTriangle,
   ChevronsLeft,
@@ -148,11 +149,8 @@ export function DataTableExcel({ data, type, onDataChange, onSelectedChange }: D
     }));
 
     try {
-      const response = await fetch("http://localhost:8000/save-multiple-customer-invoices", {
+      const response = await apiClient("/save-multiple-customer-invoices", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify(invoicesToSave),
       });
 

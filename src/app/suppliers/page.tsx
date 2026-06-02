@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { supplierInvoices } from "@/lib/mock-data"
 import { Building2, Percent, Receipt, TrendingDown } from "lucide-react"
 import { useEffect, useState } from "react"
+import { apiClient } from "@/lib/api-client"
 
 interface BackendInvoice {
   id: number              // Database auto-incremental ID
@@ -26,7 +27,6 @@ interface BackendInvoice {
 }
 
 export default function SuppliersPage() {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -55,9 +55,8 @@ export default function SuppliersPage() {
           retencion_percent: record.retencionPercent,
         }
 
-        const response = await fetch(`${apiBaseUrl}/update_supplier_invoice/${numericId}`, {
+        const response = await apiClient(`/update_supplier_invoice/${numericId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         })
 
@@ -73,7 +72,7 @@ export default function SuppliersPage() {
         return false
       }
     },
-    [apiBaseUrl]
+    []
   )
 
   // ── Delete handler: DELETE invoice from backend ──
@@ -86,7 +85,7 @@ export default function SuppliersPage() {
           return false
         }
 
-        const response = await fetch(`${apiBaseUrl}/delete_supplier_invoice/${numericId}`, {
+        const response = await apiClient(`/delete_supplier_invoice/${numericId}`, {
           method: "DELETE",
         })
 
@@ -102,7 +101,7 @@ export default function SuppliersPage() {
         return false
       }
     },
-    [apiBaseUrl]
+    []
   )
 
   // Transform backend response to frontend format
@@ -133,7 +132,7 @@ export default function SuppliersPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch(`${apiBaseUrl}/get_supplier_invoices?limit=50`)
+      const response = await apiClient("/get_supplier_invoices?limit=50")
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`)
       }
@@ -153,7 +152,7 @@ export default function SuppliersPage() {
   // Fetch data on component mount
   useEffect(() => {
     fetchData()
-  }, [apiBaseUrl])
+  }, [])
 
   // Calculate stats from fetched data or mock data (fallback)
   const dataSource = invoices.length > 0 ? invoices : supplierInvoices

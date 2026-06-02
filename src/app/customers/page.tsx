@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { customerInvoices } from "@/lib/mock-data"
 import { Euro, Receipt, TrendingUp, Users } from "lucide-react"
 import { useEffect, useState } from "react"
+import { apiClient } from "@/lib/api-client"
 
 interface BackendInvoice {
   id: number;              // Database auto-incremental ID
@@ -26,7 +27,6 @@ interface BackendInvoice {
 }
 
 export default function CustomersPage() {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -55,9 +55,8 @@ export default function CustomersPage() {
           retencion_percent: record.retencionPercent,
         }
 
-        const response = await fetch(`${apiBaseUrl}/update_customer_invoice/${numericId}`, {
+        const response = await apiClient(`/update_customer_invoice/${numericId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         })
 
@@ -73,7 +72,7 @@ export default function CustomersPage() {
         return false
       }
     },
-    [apiBaseUrl]
+    []
   )
 
   // ── Delete handler: DELETE invoice from backend ──
@@ -86,7 +85,7 @@ export default function CustomersPage() {
           return false
         }
 
-        const response = await fetch(`${apiBaseUrl}/delete_customer_invoice/${numericId}`, {
+        const response = await apiClient(`/delete_customer_invoice/${numericId}`, {
           method: "DELETE",
         })
 
@@ -102,7 +101,7 @@ export default function CustomersPage() {
         return false
       }
     },
-    [apiBaseUrl]
+    []
   )
 
   // Transform backend response to frontend format
@@ -134,7 +133,7 @@ export default function CustomersPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch(`${apiBaseUrl}/get_customer_invoices?limit=50`)
+      const response = await apiClient("/get_customer_invoices?limit=50")
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`)
       }
@@ -154,7 +153,7 @@ export default function CustomersPage() {
   // Fetch data on component mount
   useEffect(() => {
     fetchData()
-  }, [apiBaseUrl])
+  }, [])
 
   // Calculate stats from fetched data or mock data (fallback)
   const dataSource = invoices.length > 0 ? invoices : customerInvoices

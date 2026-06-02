@@ -6,7 +6,7 @@ import tempfile
 import os
 import json
 
-from fastapi import FastAPI, File, HTTPException, UploadFile, logger
+from fastapi import FastAPI, Depends, File, HTTPException, UploadFile, logger
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -19,6 +19,7 @@ from .models.modelo_130 import Modelo130Schema
 from .models.modelo_303 import Modelo303Schema
 from .db_supabase_manager import SupabaseRepository
 from .aeat_models_calculate import get_customer_invoices_summary, get_supplier_invoices_summary, save_modelo_130, get_modelo_130, calculate_new_declaracion, save_modelo_303, get_modelo_303, calculate_modelo_303, InvoiceSummaryResponse
+from .auth import get_current_user
 from pydantic import ValidationError
 
 app = FastAPI(title="Psico-Fiscal API")
@@ -38,7 +39,10 @@ app.add_middleware(
 
 
 @app.post("/extract-invoice", response_model=InvoiceSchema)
-async def extract_invoice_endpoint(file: UploadFile = File(...)) -> InvoiceSchema:
+async def extract_invoice_endpoint(
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+) -> InvoiceSchema:
     logger.info("--- Entro en extrac invoice")
     if file.content_type not in {"application/pdf", "application/x-pdf"}:
         raise HTTPException(status_code=415, detail="Solo se acepta PDF (application/pdf).")
@@ -56,7 +60,10 @@ async def extract_invoice_endpoint(file: UploadFile = File(...)) -> InvoiceSchem
 
 
 @app.post("/save-invoice", status_code=201)
-async def save_invoice_endpoint(invoice: InvoiceSchema):
+async def save_invoice_endpoint(
+    invoice: InvoiceSchema,
+    user: dict = Depends(get_current_user),
+):
     """
     Recibe los datos de una factura extraída, los valida con el esquema
     de la base de datos y los guarda en Supabase.
@@ -83,7 +90,7 @@ async def save_invoice_endpoint(invoice: InvoiceSchema):
         invoice_validated = SupplierInvoiceSchema(**db_invoice_data)
         
         # Persistencia en Supabase
-        repo = SupabaseRepository.get_instance()
+        repo = SupabaseRepository.get_user_instance(user["access_token"])
         created_record = await repo.create("supplier_invoices", invoice_validated)
         
         return {"status": "success", "data": created_record}
@@ -94,11 +101,14 @@ async def save_invoice_endpoint(invoice: InvoiceSchema):
     
 
 @app.post("/save-multiple-invoices", status_code=201)
-async def save_multiple_invoices_endpoint(invoices: List[InvoiceSchema]):
+async def save_multiple_invoices_endpoint(
+    invoices: List[InvoiceSchema],
+    user: dict = Depends(get_current_user),
+):
     """
     Recibe una lista de facturas extraídas, las valida y las guarda en Supabase.
     """
-    repo = SupabaseRepository.get_instance()
+    repo = SupabaseRepository.get_user_instance(user["access_token"])
     saved_invoices = []
     errors = []
 
@@ -138,11 +148,14 @@ async def save_multiple_invoices_endpoint(invoices: List[InvoiceSchema]):
 
 
 @app.post("/save-multiple-customer-invoices", status_code=201)
-async def save_multiple_invoices_endpoint(invoices: List[CustomerInvoiceSchema]):
+async def save_multiple_invoices_endpoint(
+    invoices: List[CustomerInvoiceSchema],
+    user: dict = Depends(get_current_user),
+):
     """
     Recibe una lista de facturas extraídas, las valida y las guarda en Supabase.
     """
-    repo = SupabaseRepository.get_instance()
+    repo = SupabaseRepository.get_user_instance(user["access_token"])
     saved_invoices = []
     errors = []
 
@@ -182,17 +195,20 @@ async def save_multiple_invoices_endpoint(invoices: List[CustomerInvoiceSchema])
 
 
 @app.get("/get_customer_invoices", response_model=List[CustomerInvoiceSchema])
-async def get_customer_invoices_endpoint(limit: int = 100):
+async def get_customer_invoices_endpoint(
+    limit: int = 100,
+    user: dict = Depends(get_current_user),
+):
     logger.error(f"Prueba comienzo a leer facturas, limit={limit}")
-    repo = SupabaseRepository.get_instance()
-    logger.error(f"Prueba comienzo a leer facturas, repo={repo}")
+    repo = SupabaseRepository.get_user_instance(user["access_token"])
     return await repo.get_all("customer_invoices", limit=limit)
 
 @app.get("/get_supplier_invoices", response_model=List[SupplierInvoiceSchema])
-async def get_supplier_invoices_endpoint(limit: int = 100):
-    logger.error(f"Prueba comienzo a leer facturas, limit={limit}")
-    repo = SupabaseRepository.get_instance()
-    logger.error(f"Prueba comienzo a leer facturas, repo={repo}")
+async def get_supplier_invoices_endpoint(
+    limit: int = 100,
+    user: dict = Depends(get_current_user),
+):
+    repo = SupabaseRepository.get_user_instance(user["access_token"])
     return await repo.get_all("supplier_invoices", limit=limit)
 
 
@@ -201,9 +217,13 @@ async def get_supplier_invoices_endpoint(limit: int = 100):
 # ──────────────────────────────────────────────
 
 @app.put("/update_customer_invoice/{invoice_id}")
-async def update_customer_invoice_endpoint(invoice_id: int, invoice: CustomerInvoiceSchema):
+async def update_customer_invoice_endpoint(
+    invoice_id: int,
+    invoice: CustomerInvoiceSchema,
+    user: dict = Depends(get_current_user),
+):
     """Update a customer invoice by its ID."""
-    repo = SupabaseRepository.get_instance()
+    repo = SupabaseRepository.get_user_instance(user["access_token"])
     # Exclude 'id' so we don't try to overwrite the PK
     updates = invoice.model_dump(mode='json', exclude={'id'})
     try:
@@ -215,9 +235,13 @@ async def update_customer_invoice_endpoint(invoice_id: int, invoice: CustomerInv
 
 
 @app.put("/update_supplier_invoice/{invoice_id}")
-async def update_supplier_invoice_endpoint(invoice_id: int, invoice: SupplierInvoiceSchema):
+async def update_supplier_invoice_endpoint(
+    invoice_id: int,
+    invoice: SupplierInvoiceSchema,
+    user: dict = Depends(get_current_user),
+):
     """Update a supplier invoice by its ID."""
-    repo = SupabaseRepository.get_instance()
+    repo = SupabaseRepository.get_user_instance(user["access_token"])
     updates = invoice.model_dump(mode='json', exclude={'id'})
     try:
         result = await repo.update("supplier_invoices", invoice_id, updates)
@@ -232,9 +256,12 @@ async def update_supplier_invoice_endpoint(invoice_id: int, invoice: SupplierInv
 # ──────────────────────────────────────────────
 
 @app.delete("/delete_customer_invoice/{invoice_id}")
-async def delete_customer_invoice_endpoint(invoice_id: int):
+async def delete_customer_invoice_endpoint(
+    invoice_id: int,
+    user: dict = Depends(get_current_user),
+):
     """Delete a customer invoice by its ID."""
-    repo = SupabaseRepository.get_instance()
+    repo = SupabaseRepository.get_user_instance(user["access_token"])
     try:
         await repo.delete("customer_invoices", invoice_id)
         return {"status": "success", "message": f"Cliente factura {invoice_id} eliminada"}
@@ -244,9 +271,12 @@ async def delete_customer_invoice_endpoint(invoice_id: int):
 
 
 @app.delete("/delete_supplier_invoice/{invoice_id}")
-async def delete_supplier_invoice_endpoint(invoice_id: int):
+async def delete_supplier_invoice_endpoint(
+    invoice_id: int,
+    user: dict = Depends(get_current_user),
+):
     """Delete a supplier invoice by its ID."""
-    repo = SupabaseRepository.get_instance()
+    repo = SupabaseRepository.get_user_instance(user["access_token"])
     try:
         await repo.delete("supplier_invoices", invoice_id)
         return {"status": "success", "message": f"Proveedor factura {invoice_id} eliminada"}
@@ -259,6 +289,7 @@ async def delete_supplier_invoice_endpoint(invoice_id: int):
 async def get_customer_invoices_summary_endpoint(
     start_date: str,
     end_date: str,
+    user: dict = Depends(get_current_user),
 ):
     """
     Get aggregated customer invoices data (amount, tax, total) between two dates.
@@ -271,7 +302,7 @@ async def get_customer_invoices_summary_endpoint(
         from datetime import datetime
         start = datetime.fromisoformat(start_date)
         end = datetime.fromisoformat(end_date)
-        return await get_customer_invoices_summary(start, end)
+        return await get_customer_invoices_summary(start, end, user["access_token"])
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -282,6 +313,7 @@ async def get_customer_invoices_summary_endpoint(
 async def get_supplier_invoices_summary_endpoint(
     start_date: str,
     end_date: str,
+    user: dict = Depends(get_current_user),
 ):
     """
     Get aggregated supplier invoices data (amount, tax, total) between two dates.
@@ -294,7 +326,7 @@ async def get_supplier_invoices_summary_endpoint(
         from datetime import datetime
         start = datetime.fromisoformat(start_date)
         end = datetime.fromisoformat(end_date)
-        return await get_supplier_invoices_summary(start, end)
+        return await get_supplier_invoices_summary(start, end, user["access_token"])
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -302,7 +334,10 @@ async def get_supplier_invoices_summary_endpoint(
         )
 
 @app.post("/save_modelo_130", status_code=201)
-async def save_modelo_130_endpoint(modelo: Modelo130Schema):
+async def save_modelo_130_endpoint(
+    modelo: Modelo130Schema,
+    user: dict = Depends(get_current_user),
+):
     """
     Save Modelo 130 (tax form) data to Supabase.
     
@@ -312,7 +347,7 @@ async def save_modelo_130_endpoint(modelo: Modelo130Schema):
     - casilla01-07, casilla19: Tax form fields with decimal values
     """
     try:
-        result = await save_modelo_130(modelo)
+        result = await save_modelo_130(modelo, user["access_token"])
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -324,6 +359,7 @@ async def save_modelo_130_endpoint(modelo: Modelo130Schema):
 async def get_modelo_130_endpoint(
     ejercicio: str,
     periodo: str,
+    user: dict = Depends(get_current_user),
 ):
     """
     Retrieve Modelo 130 (tax form) data from Supabase by year and period.
@@ -333,7 +369,7 @@ async def get_modelo_130_endpoint(
     - periodo: Period (e.g., "01", "02", etc.)
     """
     try:
-        result = await get_modelo_130(ejercicio, periodo)
+        result = await get_modelo_130(ejercicio, periodo, user["access_token"])
         if not result:
             raise HTTPException(
                 status_code=404,
@@ -351,6 +387,7 @@ async def get_modelo_130_endpoint(
 async def calculate_modelo_130_endpoint(
     start_date: str,
     end_date: str,
+    user: dict = Depends(get_current_user),
 ):
     """
     Calculates a new Modelo 130 based on aggregated customer and supplier invoices
@@ -366,7 +403,7 @@ async def calculate_modelo_130_endpoint(
         end = datetime.fromisoformat(end_date)
         print("Entro en calculate modelo_130_endpoint")
         print(f"Calculating new Modelo 130 for period endpoint: {start_date} to {end_date}")
-        return await calculate_new_declaracion(start, end)
+        return await calculate_new_declaracion(start, end, user["access_token"])
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -383,7 +420,10 @@ async def calculate_modelo_130_endpoint(
 
 
 @app.post("/save_modelo_303", status_code=201)
-async def save_modelo_303_endpoint(modelo: Modelo303Schema):
+async def save_modelo_303_endpoint(
+    modelo: Modelo303Schema,
+    user: dict = Depends(get_current_user),
+):
     """
     Save Modelo 303 (IVA) data to Supabase.
 
@@ -394,7 +434,7 @@ async def save_modelo_303_endpoint(modelo: Modelo303Schema):
     - casilla28, casilla29, casilla40, casilla41: IVA Deducible fields
     """
     try:
-        result = await save_modelo_303(modelo)
+        result = await save_modelo_303(modelo, user["access_token"])
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -407,6 +447,7 @@ async def save_modelo_303_endpoint(modelo: Modelo303Schema):
 async def get_modelo_303_endpoint(
     ejercicio: str,
     periodo: str,
+    user: dict = Depends(get_current_user),
 ):
     """
     Retrieve Modelo 303 (IVA) data from Supabase by year and period.
@@ -416,7 +457,7 @@ async def get_modelo_303_endpoint(
     - periodo: Period (e.g., "01", "02", etc.)
     """
     try:
-        result = await get_modelo_303(ejercicio, periodo)
+        result = await get_modelo_303(ejercicio, periodo, user["access_token"])
         if not result:
             raise HTTPException(
                 status_code=404,
@@ -434,6 +475,7 @@ async def get_modelo_303_endpoint(
 async def calculate_modelo_303_endpoint(
     start_date: str,
     end_date: str,
+    user: dict = Depends(get_current_user),
 ):
     """
     Calculates a new Modelo 303 based on aggregated customer and supplier invoices
@@ -448,7 +490,7 @@ async def calculate_modelo_303_endpoint(
         start = datetime.fromisoformat(start_date)
         end = datetime.fromisoformat(end_date)
         print(f"Calculating Modelo 303 for period endpoint: {start_date} to {end_date}")
-        return await calculate_modelo_303(start, end)
+        return await calculate_modelo_303(start, end, user["access_token"])
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -460,7 +502,10 @@ async def calculate_modelo_303_endpoint(
 
 
 @app.post("/extract-excel")
-async def extract_excel_data_endpoint(file: UploadFile = File(...)):
+async def extract_excel_data_endpoint(
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+):
     logger.info("--- Entro en extract excel")
     if file.content_type not in {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel"}:
         raise HTTPException(status_code=415, detail="Solo se acepta Excel (.xlsx, .xls).")
@@ -503,14 +548,17 @@ class DuplicateCheckResponse(BaseModel):
 
 
 @app.post("/check-duplicate-invoices", response_model=DuplicateCheckResponse)
-async def check_duplicate_invoices_endpoint(req: DuplicateCheckRequest):
+async def check_duplicate_invoices_endpoint(
+    req: DuplicateCheckRequest,
+    user: dict = Depends(get_current_user),
+):
     """
     Check which invoice numbers already exist in customer_invoices and/or supplier_invoices tables.
     
     Returns a map of invoice_number -> DuplicateInfo indicating if it's a duplicate and where.
     """
     tables_to_check = req.check_tables or ["customer_invoices", "supplier_invoices"]
-    repo = SupabaseRepository.get_instance()
+    repo = SupabaseRepository.get_user_instance(user["access_token"])
     result: dict[str, DuplicateInfo] = {}
 
     for inv_num in req.invoice_numbers:

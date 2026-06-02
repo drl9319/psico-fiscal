@@ -12,6 +12,10 @@ langchain-google-genai>=1.0.0
 pypdf>=4.2.0
 pandas
 
+# JWT verification via supabase-py's auth.get_user()
+# (no separate JWT library needed — the supabase client handles it)
+supabase>=2.0.0
+
 # Optional OCR fallback (only if needed):
 # pdf2image>=1.17.0
 # pytesseract>=0.3.10

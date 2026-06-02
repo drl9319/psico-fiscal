@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Percent, TrendingDown, TrendingUp } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { apiClient } from "@/lib/api-client"
 
 interface InvoiceSummary {
   total_amount: number
@@ -40,8 +41,6 @@ export function KPICards({ startDate, endDate }: KPICardsProps) {
         setLoading(true)
         setError(null)
 
-        const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
-
         // Default to current month if dates not provided
         const now = new Date()
         const defaultStartDate = startDate || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`
@@ -52,14 +51,14 @@ export function KPICards({ startDate, endDate }: KPICardsProps) {
             .split("T")[0]
 
         // Fetch customer invoices summary
-        const customerRes = await fetch(
-          `${apiBaseUrl}/customer_invoices_summary?start_date=${defaultStartDate}&end_date=${defaultEndDate}`
+        const customerRes = await apiClient(
+          `/customer_invoices_summary?start_date=${defaultStartDate}&end_date=${defaultEndDate}`
         )
         const customerData: InvoiceSummary = await customerRes.json()
 
         // Fetch supplier invoices summary
-        const supplierRes = await fetch(
-          `${apiBaseUrl}/supplier_invoices_summary?start_date=${defaultStartDate}&end_date=${defaultEndDate}`
+        const supplierRes = await apiClient(
+          `/supplier_invoices_summary?start_date=${defaultStartDate}&end_date=${defaultEndDate}`
         )
         const supplierData: InvoiceSummary = await supplierRes.json()
 
