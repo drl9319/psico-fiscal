@@ -328,11 +328,21 @@ export function calculateAEATData() {
     0
   )
 
+  const casilla04 = rendimiento * 0.20
+  const casilla07 = casilla04
+  const casilla06 = 0
+  const casilla19 = casilla07 - casilla06
+
   return {
     modelo130: {
       casilla01: ingresos,
       casilla02: gastos,
       casilla03: rendimiento,
+      casilla04: casilla04,
+      casilla05: 0,
+      casilla06: casilla06,
+      casilla07: casilla07,
+      casilla19: casilla19,
     },
     modelo303: {
       sales: {

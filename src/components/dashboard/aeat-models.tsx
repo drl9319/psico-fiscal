@@ -181,10 +181,36 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
 
   const handleCasillaChange = (casillaKey: keyof typeof casillas, value: string) => {
     const numValue = parseFloat(value) || 0
-    setCasillas(prev => ({
-      ...prev,
-      [casillaKey]: numValue,
-    }))
+    setCasillas(prev => {
+      const updated = { ...prev, [casillaKey]: numValue }
+
+      // When "01 Ingresos" or "02 Gastos" change, recalculate all derived fields
+      // matching the same logic used by the backend calculate_new_declaracion
+      if (casillaKey === "casilla01" || casillaKey === "casilla02") {
+        const rendimientoNeto = updated.casilla01 - updated.casilla02      // casilla03
+        const veintePorCiento = rendimientoNeto * 0.20                      // casilla04
+        const pagoFraccionado = veintePorCiento                             // casilla07
+        const resultadoAutoliquidacion = pagoFraccionado - updated.casilla06 // casilla19
+
+        return {
+          ...updated,
+          casilla03: rendimientoNeto,
+          casilla04: veintePorCiento,
+          casilla07: pagoFraccionado,
+          casilla19: resultadoAutoliquidacion,
+        }
+      }
+
+      // When "06 Retenciones" change, recalculate the final result
+      if (casillaKey === "casilla06") {
+        return {
+          ...updated,
+          casilla19: updated.casilla07 - numValue,
+        }
+      }
+
+      return updated
+    })
   }
 
   const getQuarterDates = (year: string, quarter: string) => {
