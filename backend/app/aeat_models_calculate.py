@@ -238,6 +238,9 @@ async def calculate_new_declaracion(
         casilla01_value = customer_summary.total_revenue
         casilla02_value = supplier_summary.total_revenue
 
+        # Casilla05: "De trimestres anteriores" — defaults to 0 for Q1
+        casilla05_value = Decimal('0.00')
+
         # If not the first quarter, retrieve the last quarter's data
         if current_quarter > 1:
             previous_quarter = current_quarter - 1
@@ -249,12 +252,17 @@ async def calculate_new_declaracion(
             if last_quarter_data:
                 casilla01_value += last_quarter_data.Casilla01
                 casilla02_value += last_quarter_data.Casilla02
+                # Casilla05 gets sum of previous quarter's "De trimestres anteriores" (Casilla05) + "Pago fraccionado previo" (Casilla07)
+                casilla05_value += last_quarter_data.Casilla05 + last_quarter_data.Casilla07
 
         # Calculate casilla03 (Rendimiento Neto)
         casilla03_value = casilla01_value - casilla02_value
 
         # Calculate casilla04 (20% importe casilla 03)
         casilla04_value = casilla03_value * Decimal('0.20')
+
+        # Casilla07 = casilla04 - casilla05 (Pago fraccionado previo)
+        casilla07_value = casilla04_value - casilla05_value
 
         # Initialize Modelo130Schema with calculated values
         return Modelo130Schema(
@@ -264,9 +272,9 @@ async def calculate_new_declaracion(
             Casilla02=casilla02_value,
             Casilla03=casilla03_value,
             Casilla04=casilla04_value,
-            Casilla05=Decimal('0.00'), # Default
+            Casilla05=casilla05_value,
             Casilla06=Decimal('0.00'), # Default
-            Casilla07=casilla04_value, # Default, can be adjusted
+            Casilla07=casilla07_value,
             Casilla19=Decimal('0.00'), # Default
         )
     except Exception as e:
