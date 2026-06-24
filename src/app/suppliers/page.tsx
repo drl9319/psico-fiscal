@@ -6,7 +6,6 @@ import { DataTable } from "@/components/dashboard/data-table"
 import type { InvoiceRecord } from "@/components/dashboard/data-table"
 import { AddInvoiceDialog } from "@/components/dashboard/add-invoice-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { supplierInvoices } from "@/lib/mock-data"
 import { Building2, Percent, Receipt, TrendingDown } from "lucide-react"
 import { useEffect, useState } from "react"
 import { apiClient } from "@/lib/api-client"
@@ -156,20 +155,17 @@ export default function SuppliersPage() {
     fetchData()
   }, [])
 
-  // Calculate stats from fetched data or mock data (fallback)
-  const dataSource = invoices.length > 0 ? invoices : supplierInvoices
-
   const toNumber = (v: unknown) =>
     typeof v === "number" ? v : Number(String(v ?? "0").replace(",", ".")) || 0
-  const totalExpenses = dataSource.reduce(
+  const totalExpenses = invoices.reduce(
     (sum, inv) => sum + toNumber((inv as any).baseImponible),
     0
   )
 
-  const uniqueSuppliers = new Set(dataSource.map((inv) => inv.supplier_name))
+  const uniqueSuppliers = new Set(invoices.map((inv) => inv.supplier_name))
     .size
-  const totalInvoices = dataSource.length
-  const totalIVADeductible = dataSource.reduce(
+  const totalInvoices = invoices.length
+  const totalIVADeductible = invoices.reduce(
     (sum, inv) => sum + toNumber((inv as any).taxAmount),
     0
   )
@@ -253,7 +249,7 @@ export default function SuppliersPage() {
               </div>
             ) : (
               <DataTable
-                data={dataSource}
+                data={invoices}
                 type="supplier"
                 onEdit={handleEdit}
                 onDelete={handleDelete}

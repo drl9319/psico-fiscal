@@ -142,19 +142,24 @@ export function DataTableInvoiceExtraction({ data, type, onDataChange, onSelecte
   const getBase = (r: InvoiceRecord) => safeNumber(r.amount)
   const getTax = (r: InvoiceRecord) => {
     const explicit = safeNumber(r.tax)
-    if (explicit > 0) return explicit
+    // Allow negative values (credit notes / abonos)
+    if (explicit !== 0) return explicit
     const pct = safeNumber(r.taxPercent)
-    return pct > 0 ? (getBase(r) * pct) / 100 : 0
+    // Allow negative percentage (credit notes / abonos)
+    return pct !== 0 ? (getBase(r) * pct) / 100 : 0
   }
   const getRetencion = (r: InvoiceRecord) => {
     const explicit = safeNumber(r.retencionAmount)
-    if (explicit > 0) return explicit
+    // Allow negative values (credit notes / abonos)
+    if (explicit !== 0) return explicit
     const pct = safeNumber(r.retencionPercent)
-    return pct > 0 ? (getBase(r) * pct) / 100 : 0
+    // Allow negative percentage (credit notes / abonos)
+    return pct !== 0 ? (getBase(r) * pct) / 100 : 0
   }
   const getTotal = (r: InvoiceRecord) => {
     const explicit = safeNumber(r.total)
-    if (explicit > 0) return explicit
+    // Allow negative values (credit notes / abonos)
+    if (explicit !== 0) return explicit
     return getBase(r) + getTax(r) - getRetencion(r)
   }
 

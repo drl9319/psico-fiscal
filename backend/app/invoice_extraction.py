@@ -177,7 +177,10 @@ def extract_invoice_data(
                 "It ALWAYS returns all required fields. "
                 "accounting_date must be in ISO format (YYYY-MM-DD). "
                 #"invoice_serie must be an integer. "
-                "amount, tax, total and retencion must be numbers (float) without symbols. "
+                "amount (taxable base / base imponible), tax (VAT / IVA), total and retencion must be numbers (float) without currency symbols. "
+                "IMPORTANT: For credit notes (abonos / notas de crédito), ALL monetary values (amount, tax, total) MUST be NEGATIVE numbers. "
+                "The total MUST equal amount + tax - retencion. "
+                "For regular invoices, all values are positive. "
                 "If you don't find retention, the value must be 0.0."
             )
         )

@@ -6,7 +6,6 @@ import { DataTable } from "@/components/dashboard/data-table"
 import type { InvoiceRecord } from "@/components/dashboard/data-table"
 import { AddInvoiceDialog } from "@/components/dashboard/add-invoice-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { customerInvoices } from "@/lib/mock-data"
 import { Euro, Receipt, TrendingUp, Users } from "lucide-react"
 import { useEffect, useState } from "react"
 import { apiClient } from "@/lib/api-client"
@@ -157,18 +156,16 @@ export default function CustomersPage() {
     fetchData()
   }, [])
 
-  // Calculate stats from fetched data or mock data (fallback)
-  const dataSource = invoices.length > 0 ? invoices : customerInvoices
   const toNumber = (v: unknown) =>
     typeof v === "number" ? v : Number(String(v ?? "0").replace(",", ".")) || 0
 
-  const totalRevenue = dataSource.reduce(
+  const totalRevenue = invoices.reduce(
     (sum, inv) => sum + toNumber((inv as any).baseImponible),
     0
   )
-  const uniqueClients = new Set(dataSource.map((inv) => inv.supplier_name))
+  const uniqueClients = new Set(invoices.map((inv) => inv.supplier_name))
     .size
-  const totalInvoices = dataSource.length
+  const totalInvoices = invoices.length
   const avgInvoice = totalInvoices > 0 ? totalRevenue / totalInvoices : 0
 
   const formatCurrency = (amount: number) => {

@@ -102,6 +102,12 @@ export function UploadZone({
         const extractedData = Array.isArray(data) ? data : [data]
 
         extractedData.forEach((item: Record<string, unknown>, index) => {
+          // Helper: parse numeric value, supporting negative numbers (credit notes / abonos)
+          const toNum = (val: unknown): number => {
+            if (val === null || val === undefined) return 0
+            const n = Number(val)
+            return Number.isFinite(n) ? n : 0
+          }
           const record: ExtractedInvoice = {
             id: `${id}-${index}`,
             fileName: file.name,
@@ -111,16 +117,16 @@ export function UploadZone({
             supplier_name: (item.supplier_name as string) || (item.customer_name as string) || 'Desconocido',
             supplier_id: (item.supplier_id as string) || (item.customer_id as string) || 'N/A',
             supplier_address: (item.supplier_address as string) || 'N/A',
-            amount: Number(item.amount || 0),
+            amount: toNum(item.amount),
             // Backend returns actual tax IVA amount (not a percentage)
-            tax: Number(item.tax || 0),
-            taxPercent: Number(item.taxPercent || 0),
+            tax: toNum(item.tax),
+            taxPercent: toNum(item.taxPercent),
             // Backend returns actual retencion amount (not a percentage)
-            retencionAmount: Number(item.retencion || 0),
-            retencionPercent: Number(item.retencionPercent || 0),
-            total: Number(item.total || 0),
+            retencionAmount: toNum(item.retencion),
+            retencionPercent: toNum(item.retencionPercent),
+            total: toNum(item.total),
             // is_credit_note is derived from the total amount: negative total = credit note
-            is_credit_note: Number(item.total || 0) < 0,
+            is_credit_note: toNum(item.total) < 0,
             category: (item.category as string) || "Otros",
             customer_id: (item.customer_id as string) || 'N/A',
             // Excel-specific fields preserved for DataTableExcel
