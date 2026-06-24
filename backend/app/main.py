@@ -547,7 +547,7 @@ async def extract_excel_data_endpoint(
     file: UploadFile = File(...),
     user: dict = Depends(get_current_user),
 ):
-    logger.info("--- Entro en extract excel")
+    logger.info("--- Entro en extract excel (%s)", file.filename)
     if file.content_type not in {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel"}:
         raise HTTPException(status_code=415, detail="Solo se acepta Excel (.xlsx, .xls).")
 
@@ -562,15 +562,19 @@ async def extract_excel_data_endpoint(
     try:
         # Call the excel_extraction function
         json_data = extract_excel_data(temp_file_path)
-        #json_data = json_data.fillna("")
         return json.loads(json_data)
     except ValueError as e:
+        logger.error("Error de validación en extract-excel: %s", e)
         raise HTTPException(status_code=422, detail=str(e)) from e
     except Exception as e:
+        logger.error("Error al procesar Excel (%s): %s", file.filename, e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error al procesar el archivo Excel: {e}") from e
     finally:
         # Clean up the temporary file
-        os.unlink(temp_file_path)
+        try:
+            os.unlink(temp_file_path)
+        except Exception:
+            pass
 
 
 class DuplicateCheckRequest(BaseModel):
