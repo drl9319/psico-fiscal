@@ -123,6 +123,48 @@ async def get_supplier_invoices_summary(
         raise ValueError(f"Error calculating supplier invoices summary: {str(e)}") from e
 
 
+async def get_customer_invoices_retencion_summary(
+    start_date: datetime,
+    end_date: datetime,
+    access_token: str = "",
+) -> Decimal:
+    """
+    Sums the 'retencion' (IRPF) field of the CustomerInvoiceSchema records
+    between two dates. Used to populate Casilla06 ("Retenciones e ingresos a
+    cuenta") of the Modelo 130 for the filtered quarter, mirroring how
+    Casilla01 aggregates the customer invoices' amount for the same period.
+
+    Args:
+        start_date: Start date for the period (inclusive)
+        end_date: End date for the period (inclusive)
+        access_token: User's JWT for RLS-aware queries.
+
+    Returns:
+        Decimal with the total 'retencion' for the period.
+    """
+    try:
+        repo = SupabaseRepository.get_user_instance(access_token) if access_token else SupabaseRepository.get_instance()
+
+        # Get all customer invoices (filtered by date below)
+        invoices = await repo.get_all("customer_invoices", limit=1000)
+
+        # Filter invoices by date range
+        filtered_invoices = [
+            inv for inv in invoices
+            if start_date <= datetime.fromisoformat(str(inv.get("accounting_date"))) <= end_date
+        ]
+
+        # Sum the 'retencion' column
+        total_retencion = sum(
+            Decimal(str(inv.get("retencion", 0) or 0)) for inv in filtered_invoices
+        )
+
+        return total_retencion
+
+    except Exception as e:
+        raise ValueError(f"Error calculating customer invoices retencion summary: {str(e)}") from e
+
+
 async def save_modelo_130(
     modelo_130: Modelo130Schema,
     access_token: str = "",
@@ -230,6 +272,8 @@ async def calculate_new_declaracion(
         print(f"Calculating new Modelo 130 for period: {start_date} to {end_date}")
         customer_summary = await get_customer_invoices_summary(start_date, end_date, access_token)
         supplier_summary = await get_supplier_invoices_summary(start_date, end_date, access_token)
+        # Casilla06 base value: sum of the customer invoices' `retencion` (IRPF) for the filtered quarter
+        customer_retencion_sum = await get_customer_invoices_retencion_summary(start_date, end_date, access_token)
 
         # Determine the quarter of the declaration
         current_quarter = start_date.month // 3 + 1
@@ -240,6 +284,11 @@ async def calculate_new_declaracion(
 
         # Casilla05: "De trimestres anteriores" — defaults to 0 for Q1
         casilla05_value = Decimal('0.00')
+
+        # Casilla06: "Retenciones e ingresos a cuenta" — sum of the customer
+        # invoices' `retencion` (IRPF) for the filtered quarter, plus the
+        # accumulated value carried forward from the previous quarter (mirrors Casilla05)
+        casilla06_value = customer_retencion_sum
 
         # If not the first quarter, retrieve the last quarter's data
         if current_quarter > 1:
@@ -254,6 +303,9 @@ async def calculate_new_declaracion(
                 casilla02_value += last_quarter_data.Casilla02
                 # Casilla05 gets sum of previous quarter's "De trimestres anteriores" (Casilla05) + "Pago fraccionado previo" (Casilla07)
                 casilla05_value += last_quarter_data.Casilla05 + last_quarter_data.Casilla07
+                # Casilla06 carries forward the accumulated "Retenciones e ingresos a cuenta"
+                # from the immediately previous quarter (mirrors Casilla05 behavior)
+                casilla06_value += last_quarter_data.Casilla06
 
         # Calculate casilla03 (Rendimiento Neto)
         casilla03_value = casilla01_value - casilla02_value
@@ -261,8 +313,8 @@ async def calculate_new_declaracion(
         # Calculate casilla04 (20% importe casilla 03)
         casilla04_value = casilla03_value * Decimal('0.20')
 
-        # Casilla07 = casilla04 - casilla05 (Pago fraccionado previo)
-        casilla07_value = casilla04_value - casilla05_value
+        # Casilla07 = casilla04 - casilla05 - casilla06 (Pago fraccionado previo)
+        casilla07_value = casilla04_value - casilla05_value - casilla06_value
 
         # Initialize Modelo130Schema with calculated values
         return Modelo130Schema(
@@ -273,9 +325,9 @@ async def calculate_new_declaracion(
             Casilla03=casilla03_value,
             Casilla04=casilla04_value,
             Casilla05=casilla05_value,
-            Casilla06=Decimal('0.00'), # Default
+            Casilla06=casilla06_value,
             Casilla07=casilla07_value,
-            Casilla19=Decimal('0.00'), # Default
+            Casilla19=casilla07_value,
         )
     except Exception as e:
         raise ValueError(f"Error calculating new Modelo 130: {str(e)}") from e

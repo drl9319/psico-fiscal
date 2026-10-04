@@ -241,6 +241,10 @@ export default function CustomersPage() {
             <AddInvoiceDialog type="customer" onSuccess={fetchData} />
           </CardHeader>
           <CardContent>
+            {/* Nota en rojo */}
+            <p className="mb-4 text-xs font-medium text-red-500">
+              04/10/26: Las RETENCIONES DE IRPF se deben incluir a mano porque falta desarrollar la lectura automática del Excel pero ya funciona en el cálculo del modelo.
+            </p>
             {loading ? (
               <div className="flex h-48 items-center justify-center">
                 <p className="text-muted-foreground">Cargando facturas...</p>

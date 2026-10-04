@@ -237,35 +237,38 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
       if (casillaKey === "casilla01" || casillaKey === "casilla02") {
         const rendimientoNeto = updated.casilla01 - updated.casilla02
         const veintePorCiento = rendimientoNeto * 0.20
-        // Casilla07 = Casilla04 (20%) - Casilla05 (De trimestres anteriores)
-        const pagoFraccionado = veintePorCiento - updated.casilla05
-        const resultadoAutoliquidacion = pagoFraccionado - updated.casilla06
+        // Casilla07 = Casilla04 (20%) - Casilla05 (trimestres anteriores) - Casilla06 (retenciones)
+        const pagoFraccionado = veintePorCiento - updated.casilla05 - updated.casilla06
 
         return {
           ...updated,
           casilla03: rendimientoNeto,
           casilla04: veintePorCiento,
           casilla07: pagoFraccionado,
-          casilla19: resultadoAutoliquidacion,
+          casilla19: pagoFraccionado,
         }
       }
 
       // When "05 De trimestres anteriores" changes, recalculate 07 and 19
       if (casillaKey === "casilla05") {
-        const pagoFraccionado = updated.casilla04 - numValue
-        const resultadoAutoliquidacion = pagoFraccionado - updated.casilla06
+        const pagoFraccionado = updated.casilla04 - numValue - updated.casilla06
 
         return {
           ...updated,
           casilla07: pagoFraccionado,
-          casilla19: resultadoAutoliquidacion,
+          casilla19: pagoFraccionado,
         }
       }
 
+      // When "06 Retenciones e ingresos a cuenta" changes, recalculate 07 and 19
+      // exactly like casilla05: subtract the declared amount from the total
       if (casillaKey === "casilla06") {
+        const pagoFraccionado = updated.casilla04 - updated.casilla05 - numValue
+
         return {
           ...updated,
-          casilla19: updated.casilla07 - numValue,
+          casilla07: pagoFraccionado,
+          casilla19: pagoFraccionado,
         }
       }
 
