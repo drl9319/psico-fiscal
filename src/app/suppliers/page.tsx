@@ -133,7 +133,7 @@ export default function SuppliersPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await apiClient("/get_supplier_invoices?limit=50")
+      const response = await apiClient("/get_supplier_invoices?limit=400")
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`)
       }

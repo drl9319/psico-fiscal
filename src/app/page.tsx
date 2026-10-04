@@ -69,9 +69,16 @@ export default function DashboardPage() {
     setDateRange(calculateQuarterDates(year, quarter));
   }, [year, quarter]);
 
-  // Format dates for API calls
-  const startDate = dateRange?.from ? dateRange.from.toISOString().split("T")[0] : undefined;
-  const endDate = dateRange?.to ? dateRange.to.toISOString().split("T")[0] : undefined;
+  // Format dates for API calls using local date components
+  // to avoid timezone shifts (toISOString() converts to UTC, which can shift the date by one day)
+  const formatLocalDate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+  const startDate = dateRange?.from ? formatLocalDate(dateRange.from) : undefined;
+  const endDate = dateRange?.to ? formatLocalDate(dateRange.to) : undefined;
 
   return (
     <DashboardLayout

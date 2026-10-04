@@ -134,7 +134,7 @@ export default function CustomersPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await apiClient("/get_customer_invoices?limit=50")
+      const response = await apiClient("/get_customer_invoices?limit=400")
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`)
       }

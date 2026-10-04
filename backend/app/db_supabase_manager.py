@@ -112,14 +112,14 @@ class SupabaseRepository:
             logger.error(f"Error al crear registro en {table}: {str(e)}")
             raise
 
-    async def get_all(self, table: str, limit: int = 100, order_by: str = "created_at") -> List[dict]:
-        """Lee todos los registros de una tabla."""
+    async def get_all(self, table: str, limit: int = 400, order_by: str = "created_at") -> List[dict]:
+        """Lee todos los registros de una tabla (ordenados del más reciente al más antiguo)."""
         try:
             response = (
                 self.client.table(table)
                 .select("*")
                 .limit(limit)
-                .order(order_by)
+                .order(order_by, desc=True)
                 .execute()
                 )
             return response.data

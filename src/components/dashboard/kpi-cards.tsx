@@ -44,11 +44,15 @@ export function KPICards({ startDate, endDate }: KPICardsProps) {
         // Default to current month if dates not provided
         const now = new Date()
         const defaultStartDate = startDate || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`
+        const toLocalDate = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          return `${y}-${m}-${day}`;
+        };
         const defaultEndDate =
           endDate ||
-          new Date(now.getFullYear(), now.getMonth() + 1, 0)
-            .toISOString()
-            .split("T")[0]
+          toLocalDate(new Date(now.getFullYear(), now.getMonth() + 1, 0))
 
         // Fetch customer invoices summary
         const customerRes = await apiClient(

@@ -133,13 +133,23 @@ export function DataTable({ data, type, onDataChange, onSelectedChange, onEdit, 
         record.supplier_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         record.invoice_number.toLowerCase().includes(searchTerm.toLowerCase())
 
-      // Normalize record date to a Date object for comparison
-      const recordDate = record.accounting_date ? new Date(record.accounting_date) : null
+      // Normalize both record date and filter dates to local midnight
+      // to avoid timezone mismatches (record dates are UTC midnight,
+      // while react-day-picker returns local-timezone dates).
+      const normalizeToDate = (d: Date) =>
+        new Date(d.getFullYear(), d.getMonth(), d.getDate())
+
+      const recordDate = record.accounting_date
+        ? normalizeToDate(new Date(record.accounting_date))
+        : null
+
+      const fromDate = dateRange?.from ? normalizeToDate(dateRange.from) : null
+      const toDate = dateRange?.to ? normalizeToDate(dateRange.to) : null
 
       const matchesDateRange =
-        !dateRange?.from ||
-        !dateRange?.to ||
-        (recordDate instanceof Date && !isNaN(recordDate.getTime()) && recordDate >= dateRange.from! && recordDate <= dateRange.to!)
+        !fromDate ||
+        !toDate ||
+        (recordDate !== null && recordDate >= fromDate && recordDate <= toDate)
 
       const matchesCategory =
         categoryFilter === "all" || record.category === categoryFilter

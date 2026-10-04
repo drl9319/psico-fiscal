@@ -12,6 +12,12 @@
 
 # testing
 /coverage
+.pytest_cache/
+__pycache__/
+*.pyc
+frontend/test-results/
+frontend/playwright-report/
+frontend/e2e/.auth/
 
 # next.js
 /.next/
@@ -40,3 +46,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 PRESENTACION_PARA_ELLA.md
+backend/.pytest_cache/
+backend/tests/__pycache__/

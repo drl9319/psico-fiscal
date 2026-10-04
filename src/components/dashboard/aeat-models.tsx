@@ -278,8 +278,15 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
       setLoading130(true)
       setMessage130(null)
 
-      const startDate = dateRange?.from ? dateRange.from.toISOString().split("T")[0] : undefined
-      const endDate = dateRange?.to ? dateRange.to.toISOString().split("T")[0] : undefined
+      // Use local date components to avoid timezone shifts
+      const toLocalDate = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      };
+      const startDate = dateRange?.from ? toLocalDate(dateRange.from) : undefined
+      const endDate = dateRange?.to ? toLocalDate(dateRange.to) : undefined
 
       if (!startDate || !endDate) {
         throw new Error("Rango de fechas inválido.")
@@ -357,8 +364,15 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
       setLoading303(true)
       setMessage303(null)
 
-      const startDate = dateRange?.from ? dateRange.from.toISOString().split("T")[0] : undefined
-      const endDate = dateRange?.to ? dateRange.to.toISOString().split("T")[0] : undefined
+      // Use local date components to avoid timezone shifts
+      const toLocalDate = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      };
+      const startDate = dateRange?.from ? toLocalDate(dateRange.from) : undefined
+      const endDate = dateRange?.to ? toLocalDate(dateRange.to) : undefined
 
       if (!startDate || !endDate) {
         throw new Error("Rango de fechas inválido.")
@@ -465,9 +479,17 @@ export function AEATModels({ data, dateRange, year, quarter }: AEATModelsProps &
     const startDate = new Date(parseInt(year), startMonth, 1)
     const endDate = new Date(parseInt(year), endMonth + 1, 0)
 
+    // Use local date components to avoid timezone shifts
+    const toLocalDate = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+
     return {
-      startDate: startDate.toISOString().split("T")[0],
-      endDate: endDate.toISOString().split("T")[0],
+      startDate: toLocalDate(startDate),
+      endDate: toLocalDate(endDate),
     }
   }
 

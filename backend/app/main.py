@@ -237,21 +237,21 @@ async def create_customer_invoice_endpoint(
 
 @app.get("/get_customer_invoices", response_model=List[CustomerInvoiceSchema])
 async def get_customer_invoices_endpoint(
-    limit: int = 100,
+    limit: int = 400,
     user: dict = Depends(get_current_user),
 ):
     logger.error(f"Prueba comienzo a leer facturas, limit={limit}")
     repo = SupabaseRepository.get_user_instance(user["access_token"])
     return await repo.get_all("customer_invoices", limit=limit)
 
+
 @app.get("/get_supplier_invoices", response_model=List[SupplierInvoiceSchema])
 async def get_supplier_invoices_endpoint(
-    limit: int = 100,
+    limit: int = 400,
     user: dict = Depends(get_current_user),
 ):
     repo = SupabaseRepository.get_user_instance(user["access_token"])
     return await repo.get_all("supplier_invoices", limit=limit)
-
 
 # ──────────────────────────────────────────────
 # UPDATE endpoints
